@@ -6,7 +6,7 @@ const pdfSchema=new mongoose.Schema(
             unqiue:true
         },
         video_id:{
-            type:String,
+            type: mongoose.Schema.Types.ObjectId,
             required:true,
             ref:Video
         },
@@ -15,7 +15,7 @@ const pdfSchema=new mongoose.Schema(
             required:true,
         },
         user_id:{
-            type:String,
+            type: mongoose.Schema.Types.ObjectId,
             required:true,
             ref:UserInfo,
         }

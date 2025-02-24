@@ -16,7 +16,7 @@ const coursesInfoSchema = new mongoose.Schema(
       required: true,
     },
     category_id: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: String,
       ref: "Category",
       required: true,
     },
@@ -25,16 +25,21 @@ const coursesInfoSchema = new mongoose.Schema(
       required: true,
     },
     created_by: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "UserInfo",
+      type: String,
+      ref:"UserInfo",
       required: true,
     },
-    enrolled_user: [
+    is_active:
+    {
+      type:Boolean,
+      default:true,
+      required:true
+    },
+    enrolled_user: 
       {
-        type: mongoose.Schema.Types.ObjectId,
+        type: Number,
         ref: "UserInfo",
-      },
-    ],
+      }
   },
   { timestamps: true }
 );

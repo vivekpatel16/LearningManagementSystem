@@ -7,12 +7,12 @@ const wishlistSchema=new mongoose.Schema(
             unique: true
         },
         course_id:{
-            type:String,
+            type: mongoose.Schema.Types.ObjectId,
             required:true,
             ref:"CoursesInfo",
         },
         user_id:{
-            type:String,
+            type: mongoose.Schema.Types.ObjectId,
             required:true,
             ref:"UserInfo"
         }
