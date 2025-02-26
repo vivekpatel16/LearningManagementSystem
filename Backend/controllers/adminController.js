@@ -21,7 +21,7 @@ exports.getAllUsers = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-//test pending
+
 exports.courseStatus = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -37,10 +37,10 @@ exports.courseStatus = async (req, res) => {
     const updatedCourse = await CoursesInfo.findByIdAndUpdate(
       course_id,
       { status: !course.status },
-      { new: true }
+      // { new: true }
     );
 
-    const statusMessage = updatedCourse.status ? "activated" : "deactivated";
+    const statusMessage = updatedCourse.status ? "deactivated" : "activated";
     return res.status(200).json({ message: `Course ${statusMessage} successfully` });
   } catch (error) {
     console.log("Error deactivating course:", error);
@@ -68,3 +68,5 @@ exports.removeUser = async (req, res) => {
     res.status(500).json({ message: "Server error while deleting user" });
   }
 };
+
+
