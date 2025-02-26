@@ -1,13 +1,16 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import Header from "../../components/Header"; // Import the Header component
+import Header from "../../Components/Header"; // Import the Header component
+import axios from "axios";
 
 const Login = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        const res = await axios.get("https://jsonplaceholder.typicode.com/posts")
+        console.log(res);
         console.log("Login Attempt:", { email, password });
     };
 
