@@ -1,5 +1,13 @@
 .App {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Ensure main content expands to push footer to the bottom */
+.main-content {
+  flex: 1;
 }
 
 .App-logo {
@@ -35,4 +43,14 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Footer Styles */
+footer {
+  background-color: #343a40;
+  color: white;
+  text-align: center;
+  padding: 10px 0;
+  width: 100%;
+  margin-top: auto;
 }
