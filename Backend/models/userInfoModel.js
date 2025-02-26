@@ -2,10 +2,6 @@ const mongoose=require("mongoose");
 const bcrypt = require("bcryptjs");
 const userInfoSchema=new mongoose.Schema(
     {
-        user_id:{
-            type:String,
-            unique: true
-        },
         user_name:{
             type:String,
             required:true,
@@ -29,19 +25,6 @@ const userInfoSchema=new mongoose.Schema(
         }
     },{timestamps:true}
 );
-userInfoSchema.pre("save", async function (next) {
-    if (this.isNew) {
-      const lastUser = await this.constructor.findOne({}, {}, { sort: { createdAt: -1 } });
-      if (lastUser && lastUser.user_id) {
-        const lastIdNumber = parseInt(lastUser.user_id.slice(1)) + 1;
-        this.user_id = `U${lastIdNumber}`;
-      } else {
-        this.user_id = "U1";
-      }
-    }
-    next();
-  });
-
 
 userInfoSchema.pre("save", async function (next) {
     if (!this.isModified("password")) return next();

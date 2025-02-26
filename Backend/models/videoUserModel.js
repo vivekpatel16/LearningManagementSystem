@@ -2,10 +2,6 @@ const mongoose = require("mongoose");
 
 const videoUserSchema = new mongoose.Schema(
   {
-    video_user_id: {
-      type: String,
-      unique:true
-    },
     course_id: {
       type:  mongoose.Schema.Types.ObjectId,
       required: true,
@@ -33,18 +29,6 @@ const videoUserSchema = new mongoose.Schema(
   { timestamps: true } 
 );
 
-videoUserSchema.pre("save", async function (next) {
-  if (this.isNew) {
-    const lastEntry = await this.constructor
-      .findOne({}, {}, { sort: { createdAt: -1 } });
-    if (lastEntry && lastEntry.video_user_id) {
-      const lastIdNumber = parseInt(lastEntry.video_user_id.slice(2)) + 1;
-      this.video_user_id = `VU${lastIdNumber}`;
-    } else {
-      this.video_user_id = "VU1";
-    }
-  }
-  next();
-});
+
 
 module.exports = mongoose.model("VideoUser", videoUserSchema);
