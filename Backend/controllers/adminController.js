@@ -2,6 +2,9 @@ const UserInfo = require("../models/userInfoModel");
 const CoursesInfo = require("../models/coursesInfoModel");
 
 exports.registerUser = async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied. Only admin can add new users" });
+  }
   const { user_name, email, password, role } = req.body;
   try {
     const userExists = await UserInfo.findOne({ email });
@@ -15,6 +18,9 @@ exports.registerUser = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
   try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Access denied. Only admin can view all users" });
+    }
     const users = await UserInfo.find();
     res.status(200).json(users);
   } catch (error) {
@@ -50,7 +56,7 @@ exports.courseStatus = async (req, res) => {
 
 exports.removeUser = async (req, res) => {
   try {
-    if (req.user.role === "user" || req.user.role === "instructor") {
+    if (req.user.role !== "admin") {
       return res.status(403).json({ message: "Access denied. Only admin can delete user" });
     }
     const { user_id } = req.params;
@@ -70,3 +76,34 @@ exports.removeUser = async (req, res) => {
 };
 
 
+exports.updateUser = async (req,res) =>{
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Access denied. Only admin can deactivate course" });
+    }
+
+    const { user_id } = req.params;
+    const user = await UserInfo.findById(user_id);
+    if (!user) {
+      return res.status(404).json({ message: "user not found" });
+    }
+
+    const { user_name,email, password, role } = req.body;
+
+    if (user_name) user.user_name = user_name;
+    if (email) user.email = email;
+    if (password) user.password = password;
+    if (role) user.role = role;
+    
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "User details updated successfully.",
+      data: user,
+    });
+  } catch (error) {
+    console.error("Error updating User details:", error);
+    res.status(500).json({ message: "Server error while updating user details." });
+  }
+}

@@ -1,13 +1,14 @@
 const express = require("express");
-
-const {addCategories,allCategories } = require("../controllers/categoryController");
-const {addCourses,fetchCourses,deleteCourse}=require("../controllers/coursesController");
+const {addCategories,allCategories,updateCategory } = require("../controllers/categoryController");
+const {addCourses,deleteCourse,updateCourse}=require("../controllers/coursesController");
 const {authenticateUser} =require("../middleware/authUserMiddleware");
 const router = express.Router();
-console.log(addCourses);
-router.post("/add",authenticateUser,addCourses);
-router.get("/fetch",authenticateUser,fetchCourses);
-router.delete("/delete-course/:course_id",authenticateUser,deleteCourse);
-router.post("/category/add", addCategories);
-router.get("/category/allcategory",allCategories);
+
+router.post("/",authenticateUser,addCourses);
+router.patch("/:course_id",authenticateUser,updateCourse);
+router.delete("/:course_id",authenticateUser,deleteCourse);
+router.get("/category",authenticateUser,allCategories);
+router.post("/category",authenticateUser, addCategories);
+router.patch("/category/:category_id",authenticateUser, updateCategory);
+
 module.exports = router;

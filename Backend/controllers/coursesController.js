@@ -86,3 +86,51 @@ exports.deleteCourse = async (req, res) => {
     res.status(500).json({ message: "Server error while deleting courses." });
   }
 };
+
+
+exports.updateCourse = async (req, res) => {
+  try {
+    if (req.user.role !== "instructor") {
+      return res.status(403).json({
+        success: false,
+        message: "Only instructors are authorized to update courses.",
+      });
+    }
+
+    const { course_id } = req.params;
+    const course = await Courses.findById(course_id);
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    // Extract fields from request body
+    const { title, description, category_name, image } = req.body;
+    let category;
+
+    // If category_name is provided, validate it
+    if (category_name) {
+      category = await Category.findOne({ category_name });
+      if (!category) {
+        return res.status(400).json({ message: "Invalid category name provided." });
+      }
+    }
+
+    // Update only the provided fields
+    if (title) course.title = title;
+    if (description) course.description = description;
+    if (category_name) course.category_name = category_name;
+    if (image) course.image = image;
+
+    await course.save(); // Save the updated course
+
+    res.status(200).json({
+      success: true,
+      message: "Course updated successfully.",
+      data: course, // Return updated course details
+    });
+  } catch (error) {
+    console.error("Error updating course:", error);
+    res.status(500).json({ message: "Server error while updating course." });
+  }
+};
