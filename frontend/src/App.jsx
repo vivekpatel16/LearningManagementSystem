@@ -1,11 +1,9 @@
-import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Login from "./pages/Auth/Login";
 import ForgotPassword from "./pages/Auth/ForgotPassword";
 import ResetPassword from "./pages/Auth/ResetPassword";  // ✅ Import Reset Password
 import Admin from "./pages/Admin/Admin";
 import Instructor from "./pages/Instructor/Instructor";
-import "bootstrap/dist/css/bootstrap.min.css";
 
 function App() {
   return (
@@ -18,7 +16,7 @@ function App() {
         <Route path="/Instructor/*" element={<Instructor />} />
       </Routes>
     </Router>
-  );
+  )
 }
 
-export default App;
+export default App

@@ -8,6 +8,7 @@ const coursesRoutes = require("./routes/coursesRoutes");
 
 dotenv.config();
 connectDb();
+
 const app = express();
 app.use(cors());
 app.use(express.json());
