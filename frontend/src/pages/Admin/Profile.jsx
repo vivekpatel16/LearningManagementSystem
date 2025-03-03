@@ -1,141 +1,86 @@
-import React, { useEffect, useState } from "react";
-import { Container, Row, Col, Card, Table, Button, Spinner } from "react-bootstrap";
-import Sidebar from "../../Components/Sidebar";
-import Header from "../../Components/Header";
-import API from "../../Api/authApi";
-import { FaUsers, FaBook, FaUserGraduate, FaChartLine, FaChalkboardTeacher } from "react-icons/fa";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Container, Row, Col, Card, Button, Form, Modal } from "react-bootstrap";
+import { useSelector, useDispatch } from "react-redux";
+import { logout } from "../../features/auth/authSlice";
+import defaultProfilePic from "../../assets/th.png"
 
-const Dashboard = () => {
-  const [totalUsers, setTotalUsers] = useState(0);
-  const [totalInstructors, setTotalInstructors] = useState(0);
-  const [totalCourses, setTotalCourses] = useState(0);
-  const [recentActivities, setRecentActivities] = useState([]);
-  const [loading, setLoading] = useState(true);
+const Profile = () => {
+  const { user } = useSelector((state) => state.auth); // Get user from Redux
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          console.error("No token found. Please log in.");
-          return;
-        }
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editedData, setEditedData] = useState({ ...user });
 
-        const response = await API.get("/users/courses");
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate("/");
+  };
 
-        if (response.data) {
-          setTotalUsers(response.data.totalUser);
-          setTotalInstructors(response.data.totalInstructor);
-          setTotalCourses(response.data.allCourses);
-        }
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error.response?.data || error.message);
-      }
-    };
+  const handleChange = (e) => {
+    setEditedData({ ...editedData, [e.target.name]: e.target.value });
+  };
 
-    const fetchRecentActivities = async () => {
-      try {
-        const response = await API.get("/users/recent-activities");
-        setRecentActivities(response.data.data);
-      } catch (error) {
-        console.error("Error fetching recent activities:", error.response?.data || error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-    fetchRecentActivities();
-  }, []);
+  const handleSave = () => {
+    console.log("Save changes", editedData); // Save changes logic
+    setShowEditModal(false);
+  };
 
   return (
-    <>
-      <Header />
-      <div className="d-flex">
-        <Sidebar />
-        <Container className="mt-4 flex-grow-1">
-          <h2 className="mb-4">Admin Dashboard</h2>
-          <Row className="mb-4">
-            <Col md={3}>
-              <Card className="shadow text-center p-3">
-                <FaUsers size={40} className="text-primary mb-2" />
-                <h5>Total Users</h5>
-                <h3>{totalUsers}</h3>
-              </Card>
-            </Col>
-            <Col md={3}>
-              <Card className="shadow text-center p-3">
-                <FaBook size={40} className="text-success mb-2" />
-                <h5>Total Courses</h5>
-                <h3>{totalCourses}</h3>
-              </Card>
-            </Col>
-            <Col md={3}>
-              <Card className="shadow text-center p-3">
-                <FaUserGraduate size={40} className="text-warning mb-2" />
-                <h5>Active Learners</h5>
-                <h3>0</h3>
-              </Card>
-            </Col>
-            <Col md={3}>
-              <Card className="shadow text-center p-3">
-                <FaChalkboardTeacher size={40} className="text-info mb-2" />
-                <h5>Total Instructors</h5>
-                <h3>{totalInstructors}</h3>
-              </Card>
-            </Col>
-          </Row>
+    <Container className="mt-5">
+      <Row className="justify-content-center">
+        <Col md={6}>
+          <Card className="shadow-lg p-3 mb-5 bg-white rounded">
+            <Card.Body className="text-center">
+              <img
+                // src={user?.profilePic || "default-image.png"}
+                src={defaultProfilePic}
+                alt="Profile"
+                className="rounded-circle mb-3"
+                width="100"
+                height="100"
+              />
+              <h4>{user?.user_name}</h4>
+              <p className="text-muted">{user?.role}</p>
+              <p>Email: {user?.email}</p>
 
-          <Row>
-            <Col md={8}>
-              <Card className="shadow mt-3">
-                <Card.Body>
-                  <h5><FaChartLine className="me-2 text-primary" /> Recent Activities</h5>
-                  {loading ? (
-                    <Spinner animation="border" />
-                  ) : (
-                    <Table striped bordered hover className="mt-3">
-                      <thead>
-                        <tr>
-                          <th>Index</th>
-                          <th>Activity</th>
-                          <th>Time</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {recentActivities.map((activity, index) => (
-                          <tr key={activity._id}>
-                            <td>{index + 1}</td>
-                            <td>{activity.action}</td>
-                            <td>{new Date(activity.timestamp).toLocaleString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </Table>
-                  )}
-                </Card.Body>
-              </Card>
-            </Col>
+              <Button variant="primary" className="m-2" onClick={() => setShowEditModal(true)}>
+                Edit Profile
+              </Button>
+              <Button variant="warning" className="m-2">Change Password</Button>
+              <Button variant="danger" className="m-2" onClick={handleLogout}>
+                Logout
+              </Button>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
 
-            <Col md={4}>
-              <Card className="shadow p-4 ms-auto mt-3" style={{ width: "300px", height: "290px" }}>
-                <h5>Quick Links</h5>
-                <Button variant="primary" size="md" className="w-100 mb-3 mt-4" href="/admin/courses">
-                  Manage Courses
-                </Button>
-                <Button variant="success" size="md" className="w-100 mb-3" href="/admin/users">
-                  Manage Users
-                </Button>
-                <Button variant="danger" size="md" className="w-100 mb-3" href="/admin/reports">
-                  View Reports
-                </Button>
-              </Card>
-            </Col>
-          </Row>
-        </Container>
-      </div>
-    </>
+      {/* Edit Profile Modal */}
+      <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Edit Profile</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>Name</Form.Label>
+              <Form.Control type="text" name="name" value={editedData.name} onChange={handleChange} />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Email</Form.Label>
+              <Form.Control type="email" name="email" value={editedData.email} onChange={handleChange} />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</Button>
+          <Button variant="success" onClick={handleSave}>Save Changes</Button>
+        </Modal.Footer>
+      </Modal>
+    </Container>
   );
 };
 
-export default Dashboard;
+export default Profile;
