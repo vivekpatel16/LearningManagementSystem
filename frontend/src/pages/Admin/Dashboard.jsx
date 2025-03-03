@@ -120,13 +120,13 @@ const Dashboard = () => {
             <Col md={4}>
               <Card className="shadow p-4 ms-auto mt-3" style={{ width: "300px", height: "290px" }}>
                 <h5>Quick Links</h5>
-                <Button variant="primary" size="md" className="w-100 mb-3 mt-4" href="/Admin/Courses">
+                <Button variant="primary" size="md" className="w-100 mb-3 mt-4" href="/admin/courses">
                   Manage Courses
                 </Button>
-                <Button variant="success" size="md" className="w-100 mb-3" href="/Admin/Users">
+                <Button variant="success" size="md" className="w-100 mb-3" href="/admin/users">
                   Manage Users
                 </Button>
-                <Button variant="danger" size="md" className="w-100 mb-3" href="/Admin/Reports">
+                <Button variant="danger" size="md" className="w-100 mb-3" href="/admin/reports">
                   View Reports
                 </Button>
               </Card>
