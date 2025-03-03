@@ -3,22 +3,16 @@ import axios from "axios";
 
 export const loginUser = createAsyncThunk("users/loginUser", async (credentials, { rejectWithValue }) => {
   try {
-    const response = await axios.post(
-      "http://localhost:5000/api/users/login",
-      credentials,
-      { headers: { "Content-Type": "application/json" } }  
-    );
-
-    
+    const response = await axios.post("http://localhost:5000/api/users/login", credentials, {
+      headers: { "Content-Type": "application/json" },
+    });
     localStorage.setItem("user", JSON.stringify(response.data.user));
     localStorage.setItem("token", response.data.token);
-
     return response.data;
   } catch (error) {
     return rejectWithValue(error.response?.data || { message: "Login failed" });
   }
 });
-
 
 const storedUser = JSON.parse(localStorage.getItem("user")) || null;
 const storedToken = localStorage.getItem("token") || null;
@@ -33,23 +27,17 @@ const authSlice = createSlice({
       localStorage.removeItem("user");
       localStorage.removeItem("token");
     },
+    updateUser: (state, action) => {
+      state.user = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(loginUser.pending, (state) => {
-        state.loading = true;
-      })
-      .addCase(loginUser.fulfilled, (state, action) => {
-        state.user = action.payload.user;
-        state.token = action.payload.token;
-        state.loading = false;
-      })
-      .addCase(loginUser.rejected, (state, action) => {
-        state.error = action.payload?.message || "Login failed";
-        state.loading = false;
-      });
+      .addCase(loginUser.pending, (state) => { state.loading = true; })
+      .addCase(loginUser.fulfilled, (state, action) => { state.user = action.payload.user; state.token = action.payload.token; state.loading = false; })
+      .addCase(loginUser.rejected, (state, action) => { state.error = action.payload?.message || "Login failed"; state.loading = false; });
   },
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, updateUser } = authSlice.actions;
 export default authSlice.reducer;
