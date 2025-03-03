@@ -1,7 +1,7 @@
 import React from "react";
 import { Container, Row, Col, Card } from "react-bootstrap";
 import Sidebar from "./sidebar";
-import Header from "../../components/Header";
+import Header from "../../Components/Header";
 
 const Dashboard = () => {
   return (

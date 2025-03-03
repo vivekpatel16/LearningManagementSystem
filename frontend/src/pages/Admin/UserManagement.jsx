@@ -1,46 +1,80 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Container, Table, Button, Modal, Form, Card, InputGroup, FormControl } from "react-bootstrap";
 import { FaUserEdit, FaTrash, FaPlus, FaSearch } from "react-icons/fa";
+import Admin_API from "../../Api/adminApi";
 
 const UserManagement = () => {
-  const [users, setUsers] = useState([
-    { id: 1, name: "Alice Johnson", email: "alice@example.com", role: "Learner" },
-    { id: 2, name: "Michael Smith", email: "michael@example.com", role: "Instructor" },
-    { id: 3, name: "Sarah Williams", email: "sarah@example.com", role: "Learner" },
-  ]);
-
+  const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState("Add");
-  const [currentUser, setCurrentUser] = useState({ id: "", name: "", email: "", role: "Learner" });
 
-  const handleShowModal = (type, user = { id: "", name: "", email: "", role: "Learner" }) => {
+  // Separate states for new users and existing users
+  const [newUser, setNewUser] = useState({ user_name: "", email: "", password: "", role: "user" });
+  const [currentUser, setCurrentUser] = useState({ _id: "", user_name: "", email: "", password: "", role: "user" });
+
+  // Fetch users from API
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await Admin_API.get("/user");
+      setUsers(response.data);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  };
+
+  const handleShowModal = (type, user = null) => {
     setModalType(type);
-    setCurrentUser(user);
+    if (type === "Add") {
+      setNewUser({ user_name: "", email: "", password: "", role: "user" });
+    } else {
+      setCurrentUser(user);
+    }
     setShowModal(true);
   };
 
-  const handleChange = (e) => {
+  const handleChangeNewUser = (e) => {
+    setNewUser({ ...newUser, [e.target.name]: e.target.value });
+  };
+
+  const handleChangeCurrentUser = (e) => {
     setCurrentUser({ ...currentUser, [e.target.name]: e.target.value });
   };
 
-  const handleSave = () => {
-    if (modalType === "Add") {
-      setUsers([...users, { ...currentUser, id: users.length + 1 }]);
-    } else {
-      setUsers(users.map((user) => (user.id === currentUser.id ? currentUser : user)));
+  const handleSave = async () => {
+    try {
+      if (modalType === "Add") {
+        await Admin_API.post("/user", newUser);
+      } else {
+        await Admin_API.patch(`/user/${currentUser._id}`, currentUser);
+      }
+      setShowModal(false);
+      fetchUsers(); // Fetch updated data after saving
+    } catch (error) {
+      console.error("Error saving user:", error);
     }
-    setShowModal(false);
   };
+  
 
-  const handleDelete = (id) => {
-    setUsers(users.filter((user) => user.id !== id));
+  const handleDelete = async (id) => {
+    try {
+      const response = await Admin_API.delete(`/user/${id}`);
+      if (response.status === 200) {
+        setUsers(users.filter((user) => user._id !== id));
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error);
+    }
   };
 
   const filteredUsers = users.filter(
     (user) =>
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+      user.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -55,15 +89,15 @@ const UserManagement = () => {
 
         {/* Search Bar */}
         <div className="d-flex justify-content mb-3">
-        <InputGroup style={{ maxWidth: "500px" }} >
-          <InputGroup.Text><FaSearch /></InputGroup.Text>
-          <FormControl
-            type="text"
-            placeholder="Search by name or email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </InputGroup>
+          <InputGroup style={{ maxWidth: "500px" }}>
+            <InputGroup.Text><FaSearch /></InputGroup.Text>
+            <FormControl
+              type="text"
+              placeholder="Search by name or email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </InputGroup>
         </div>
 
         <Table striped bordered hover responsive>
@@ -79,21 +113,16 @@ const UserManagement = () => {
           <tbody>
             {filteredUsers.length > 0 ? (
               filteredUsers.map((user, index) => (
-                <tr key={user.id}>
+                <tr key={user._id}>
                   <td>{index + 1}</td>
-                  <td>{user.name}</td>
+                  <td>{user.user_name}</td>
                   <td>{user.email}</td>
                   <td>{user.role}</td>
                   <td>
-                    <Button
-                      variant="warning"
-                      size="sm"
-                      className="me-2"
-                      onClick={() => handleShowModal("Edit", user)}
-                    >
+                    <Button variant="warning" size="sm" className="me-2" onClick={() => handleShowModal("Edit", user)}>
                       <FaUserEdit /> Edit
                     </Button>
-                    <Button variant="danger" size="sm" onClick={() => handleDelete(user.id)}>
+                    <Button variant="danger" size="sm" onClick={() => handleDelete(user._id)}>
                       <FaTrash /> Delete
                     </Button>
                   </td>
@@ -101,9 +130,7 @@ const UserManagement = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="5" className="text-center">
-                  No users found
-                </td>
+                <td colSpan="5" className="text-center">No users found</td>
               </tr>
             )}
           </tbody>
@@ -121,9 +148,9 @@ const UserManagement = () => {
               <Form.Label>Name</Form.Label>
               <Form.Control
                 type="text"
-                name="name"
-                value={currentUser.name}
-                onChange={handleChange}
+                name="user_name"
+                value={modalType === "Add" ? newUser.user_name : currentUser.user_name}
+                onChange={modalType === "Add" ? handleChangeNewUser : handleChangeCurrentUser}
                 required
               />
             </Form.Group>
@@ -132,28 +159,39 @@ const UserManagement = () => {
               <Form.Control
                 type="email"
                 name="email"
-                value={currentUser.email}
-                onChange={handleChange}
+                value={modalType === "Add" ? newUser.email : currentUser.email}
+                onChange={modalType === "Add" ? handleChangeNewUser : handleChangeCurrentUser}
                 required
               />
             </Form.Group>
             <Form.Group className="mb-3">
+              <Form.Label>Password</Form.Label>
+              <Form.Control
+                type="password"
+                name="password"
+                value={modalType === "Add" ? newUser.password : currentUser.password}
+                onChange={modalType === "Add" ? handleChangeNewUser : handleChangeCurrentUser}
+                required={modalType === "Add"}
+                autoComplete="new-password"
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
               <Form.Label>Role</Form.Label>
-              <Form.Select name="role" value={currentUser.role} onChange={handleChange}>
-                <option value="Learner">Learner</option>
-                <option value="Instructor">Instructor</option>
-                <option value="Admin">Admin</option>
+              <Form.Select
+                name="role"
+                value={modalType === "Add" ? newUser.role : currentUser.role}
+                onChange={modalType === "Add" ? handleChangeNewUser : handleChangeCurrentUser}
+              >
+                <option value="user">Learner</option>
+                <option value="instructor">Instructor</option>
+                <option value="admin">Admin</option>
               </Form.Select>
             </Form.Group>
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="success" onClick={handleSave}>
-            Save
-          </Button>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
+          <Button variant="success" size="sm" onClick={handleSave}>Save</Button>
         </Modal.Footer>
       </Modal>
     </Container>
