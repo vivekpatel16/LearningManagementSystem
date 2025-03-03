@@ -22,6 +22,10 @@ const userInfoSchema=new mongoose.Schema(
         {
             type:String,
             enum: ["admin", "instructor", "user"],
+        },
+        user_image:
+        {
+            type:String
         }
     },{timestamps:true}
 );

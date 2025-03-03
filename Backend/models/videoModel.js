@@ -10,7 +10,7 @@ const videoSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    video_description: {
+    video_description:{
       type: String,
     },
     course_id: {
@@ -22,4 +22,4 @@ const videoSchema = new mongoose.Schema(
   { timestamps: true } 
 );
 
-module.exports = mongoose.model("Video", videoSchema);
+module.exports = mongoose.model("VideoInfo", videoSchema);

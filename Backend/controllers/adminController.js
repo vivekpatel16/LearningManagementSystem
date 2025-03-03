@@ -28,29 +28,26 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
+
 exports.courseStatus = async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Access denied. Only admin can deactivate course" });
-    }
-    const { course_id } = req.params;
-    const course = await CoursesInfo.findById(course_id); 
-
+    const {course_id}  = req.params;
+    const { status } = req.body;
+    const course = await CoursesInfo.findById(course_id);
     if (!course) {
-      return res.status(404).json({ message: "Course not found" });
+      return res.status(404).json({ success: false, message: "Course not found" });
     }
+    course.status = status;
+    await course.save();
 
-    const updatedCourse = await CoursesInfo.findByIdAndUpdate(
-      course_id,
-      { status: !course.status },
-      // { new: true }
-    );
-
-    const statusMessage = updatedCourse.status ? "deactivated" : "activated";
-    return res.status(200).json({ message: `Course ${statusMessage} successfully` });
+    return res.status(200).json({
+      success: true,
+      message: `Course ${status ? "Activated" : "Deactivated"} successfully`,
+      data: course
+    });
   } catch (error) {
-    console.log("Error deactivating course:", error);
-    res.status(500).json({ message: "Server error while deactivating course" });
+    console.error("Error updating course status:", error);
+    res.status(500).json({ success: false, message: "Server error while updating course status" });
   }
 };
 

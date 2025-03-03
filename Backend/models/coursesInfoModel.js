@@ -16,7 +16,7 @@ const coursesInfoSchema = new mongoose.Schema(
       ref: "Category",
       required: true,
     },
-    image: {
+    thumbnail:{
       type: String,
       required: true,
     },
@@ -31,11 +31,11 @@ const coursesInfoSchema = new mongoose.Schema(
       default:true,
       required:true
     },
-    enrolled_user: 
-      {
-        type: Number,
-        ref: "UserInfo",
-      }
+    chapter_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      required:true,
+      ref:"Chapter"
+    }
   },
   { timestamps: true }
 );
