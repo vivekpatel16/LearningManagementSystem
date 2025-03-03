@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import Sidebar from "./Components/Sidebar";
 import Login from "./pages/Auth/Login";
 import ForgotPassword from "./pages/Auth/ForgotPassword";
@@ -23,14 +23,24 @@ const PrivateRoute = ({ element, roles }) => {
 function App() {
   const { user } = useSelector((state) => state.auth);
   const navigate = useNavigate();
+  const location = useLocation(); // Get the current path
 
   useEffect(() => {
     if (user) {
-      if (user.role === "admin") navigate("/admin/dashboard");
-      else if (user.role === "instructor") navigate("/instructor/dashboard");
-      else if (user.role === "user") navigate("/home");
+      const allowedRoutes = {
+        admin: ["/admin/dashboard", "/admin/users", "/admin/courses", "/admin/reports", "/admin/profile"],
+        instructor: ["/instructor/dashboard"],
+        user: ["/home"],
+      };
+
+      // Check if the current route is in the allowed list, if not, redirect
+      if (!allowedRoutes[user.role]?.includes(location.pathname)) {
+        if (user.role === "admin") navigate("/admin/dashboard");
+        else if (user.role === "instructor") navigate("/instructor/dashboard");
+        else if (user.role === "user") navigate("/home");
+      }
     }
-  }, [user, navigate]);
+  }, [user, navigate, location.pathname]); // Add location.pathname to dependencies
 
   return (
     <>
@@ -42,37 +52,11 @@ function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Admin Routes */}
-        <Route
-          path="/admin/dashboard"
-          element={
-            <PrivateRoute element={<AdminDashboard />} roles={["admin"]} />
-          }
-        />
-        <Route
-          path="/admin/users"
-          element={
-            <PrivateRoute element={<UserManagement />} roles={["admin"]} />
-          }
-        />
-        <Route
-          path="/admin/courses"
-          element={
-            <PrivateRoute
-              element={<AdminCourseManagement />}
-              roles={["admin"]}
-            />
-          }
-        />
-        <Route
-          path="/admin/reports"
-          element={<PrivateRoute element={<Reports />} roles={["admin"]} />}
-        />
-        <Route
-          path="/admin/profile"
-          element={
-            <PrivateRoute element={<AdminProfile />} roles={["admin"]} />
-          }
-        />
+        <Route path="/admin/dashboard" element={<PrivateRoute element={<AdminDashboard />} roles={["admin"]} />} />
+        <Route path="/admin/users" element={<PrivateRoute element={<UserManagement />} roles={["admin"]} />} />
+        <Route path="/admin/courses" element={<PrivateRoute element={<AdminCourseManagement />} roles={["admin"]} />} />
+        <Route path="/admin/reports" element={<PrivateRoute element={<Reports />} roles={["admin"]} />} />
+        <Route path="/admin/profile" element={<PrivateRoute element={<AdminProfile />} roles={["admin"]} />} />
       </Routes>
       <Footer />
     </>
