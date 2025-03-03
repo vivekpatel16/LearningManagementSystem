@@ -1,5 +1,4 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-// import Navbar from "./Components/Navbar";
 import Sidebar from "./Components/Sidebar";
 import Login from "./pages/Auth/Login";
 import ForgotPassword from "./pages/Auth/ForgotPassword";
@@ -45,3 +44,6 @@ function App() {
 }
 
 export default App;
+
+
+
