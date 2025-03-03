@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Sidebar from "./Components/Sidebar";
 import Login from "./pages/Auth/Login";
 import ForgotPassword from "./pages/Auth/ForgotPassword";
@@ -21,10 +22,19 @@ const PrivateRoute = ({ element, roles }) => {
 
 function App() {
   const { user } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === "admin") navigate("/admin/dashboard");
+      else if (user.role === "instructor") navigate("/instructor/dashboard");
+      else if (user.role === "user") navigate("/home");
+    }
+  }, [user, navigate]);
 
   return (
     <>
-      <Header/>
+      <Header />
       {user && <Sidebar />}
       <Routes>
         <Route path="/" element={<Login />} />
@@ -32,18 +42,41 @@ function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Admin Routes */}
-        <Route path="/admin/dashboard" element={<PrivateRoute element={<AdminDashboard />} roles={["admin"]} />} />
-        <Route path="/admin/users" element={<PrivateRoute element={<UserManagement />} roles={["admin"]} />} />
-        <Route path="/admin/courses" element={<PrivateRoute element={<AdminCourseManagement />} roles={["admin"]} />} />
-        <Route path="/admin/reports" element={<PrivateRoute element={<Reports />} roles={["admin"]} />} />
-        <Route path="/admin/profile" element={<PrivateRoute element={<AdminProfile />} roles={["admin"]} />} />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <PrivateRoute element={<AdminDashboard />} roles={["admin"]} />
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <PrivateRoute element={<UserManagement />} roles={["admin"]} />
+          }
+        />
+        <Route
+          path="/admin/courses"
+          element={
+            <PrivateRoute
+              element={<AdminCourseManagement />}
+              roles={["admin"]}
+            />
+          }
+        />
+        <Route
+          path="/admin/reports"
+          element={<PrivateRoute element={<Reports />} roles={["admin"]} />}
+        />
+        <Route
+          path="/admin/profile"
+          element={
+            <PrivateRoute element={<AdminProfile />} roles={["admin"]} />
+          }
+        />
       </Routes>
-      <Footer/>
+      <Footer />
     </>
   );
 }
 
 export default App;
-
-
-
