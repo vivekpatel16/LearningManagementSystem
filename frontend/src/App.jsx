@@ -10,6 +10,7 @@ import AdminCourseManagement from "./pages/Admin/CourseManagement";
 import Reports from "./pages/Admin/Reports";
 import InstructorDashboard from "./pages/Instructor/Dashboard";
 import InstructorCourses from "./pages/Instructor/CourseManagement";
+import MyCourses from "./pages/Instructor/MyCourses";
 import Home from "./pages/Learner/Home";
 import MyLearning from "./pages/Learner/MyLearning";
 import Wishlist from "./pages/Learner/Wishlist";
@@ -35,7 +36,7 @@ function App() {
     if (user) {
       const allowedRoutes = {
         admin: ["/admin/dashboard", "/admin/users", "/admin/courses", "/admin/reports", "/profile"],
-        instructor: ["/instructor/dashboard", "/instructor/courses", "/profile"],
+        instructor: ["/instructor/dashboard", "/instructor/courses","/instructor/mycourses", "/profile"],
         user: ["/home", "/my-learning", "/wishlist", "/profile", "/courses"],
       };
 
@@ -66,6 +67,7 @@ function App() {
         {/* Instructor Routes */}
         <Route path="/instructor/dashboard" element={<PrivateRoute element={<InstructorDashboard />} roles={["instructor"]} />} />
         <Route path="/instructor/courses" element={<PrivateRoute element={<InstructorCourses />} roles={["instructor"]} />} />
+        <Route path="/instructor/mycourses" element={<PrivateRoute element={<MyCourses />} roles={["instructor"]} />} />
 
         {/* User (Learner) Routes */}
         <Route path="/home" element={<PrivateRoute element={<Home />} roles={["user"]} />} />
