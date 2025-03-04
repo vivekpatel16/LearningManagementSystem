@@ -2,7 +2,7 @@ import React from "react";
 import { Container } from "react-bootstrap";
 import { Routes, Route, Navigate } from "react-router-dom";
 import AdminNavbar from "./sidebar"; // Sidebar stays visible
-import Header from "../../components/Header";
+import Header from "../../Components/Header";
 import Dashboard from "./Dashboard";
 import CourseManagement from "./CourseManagement";
 import UserManagement from "./UserManagement";

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Container, Row, Col, Card, Button, Form, Modal } from "react-bootstrap";
+import { useNavigate } from "react-router-dom"; // For Logout Redirection
 import defaultProfilePic from "./th.png"; // Ensure correct path
 
 const adminData = {
@@ -12,7 +13,13 @@ const adminData = {
 const AdminProfile = () => {
   const [admin, setAdmin] = useState(adminData);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [editedData, setEditedData] = useState({ ...admin });
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const navigate = useNavigate(); // For Logout
 
   // Handle input changes
   const handleChange = (e) => {
@@ -31,6 +38,25 @@ const AdminProfile = () => {
   const handleSave = () => {
     setAdmin(editedData);
     setShowEditModal(false);
+  };
+
+  // Handle Change Password
+  const handleChangePassword = () => {
+    if (newPassword !== confirmPassword) {
+      alert("New Password and Confirm Password do not match!");
+      return;
+    }
+    alert("Password changed successfully!");
+    setShowPasswordModal(false);
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+  };
+
+  // Handle Logout
+  const handleLogout = () => {
+    localStorage.removeItem("token"); // Clear authentication token
+    navigate("/"); // Redirect to login page
   };
 
   return (
@@ -53,8 +79,12 @@ const AdminProfile = () => {
               <Button variant="primary" className="m-2" onClick={() => setShowEditModal(true)}>
                 Edit Profile
               </Button>
-              <Button variant="warning" className="m-2">Change Password</Button>
-              <Button variant="danger" className="m-2">Logout</Button>
+              <Button variant="warning" className="m-2" onClick={() => setShowPasswordModal(true)}>
+                Change Password
+              </Button>
+              <Button variant="danger" className="m-2" onClick={handleLogout}>
+                Logout
+              </Button>
             </Card.Body>
           </Card>
         </Col>
@@ -100,8 +130,52 @@ const AdminProfile = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {/* Change Password Modal */}
+      <Modal show={showPasswordModal} onHide={() => setShowPasswordModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Change Password</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>Current Password</Form.Label>
+              <Form.Control
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>New Password</Form.Label>
+              <Form.Control
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Confirm New Password</Form.Label>
+              <Form.Control
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowPasswordModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="success" onClick={handleChangePassword}>
+            Change Password
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 };
 
 export default AdminProfile;
+  

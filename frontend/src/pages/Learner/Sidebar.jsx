@@ -1,0 +1,80 @@
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { Offcanvas, Button } from "react-bootstrap";
+import { FaBars, FaHome, FaBook, FaChartBar, FaHeart } from "react-icons/fa";
+import defaultProfilePic from "./th.jpeg";
+
+const Sidebar = () => {
+  const [show, setShow] = useState(false);
+  const [profileName, setProfileName] = useState("Profile");
+
+  // Fetch profile name from localStorage or API
+  useEffect(() => {
+    const storedName = localStorage.getItem("profileName");
+    if (storedName) {
+      setProfileName(storedName);
+    }
+  }, []);
+
+  return (
+    <>
+      {/* Hamburger Button - Show when Sidebar is Closed */}
+      {!show && (
+        <Button
+          variant="light"
+          className="position-fixed top-0 end-0 m-3"
+          onClick={() => setShow(true)}
+          style={{ zIndex: 1050 }}
+        >
+          <FaBars />
+        </Button>
+      )}
+
+      {/* Sidebar - Opens from the right */}
+      <Offcanvas 
+        show={show} 
+        onHide={() => setShow(false)} 
+        placement="end" 
+        style={{ width: "280px", backgroundColor: "#ebf4fd" }}
+      >
+        <Offcanvas.Header closeButton>
+          <Offcanvas.Title>
+            <Link
+              to="/Learner/profile"
+              onClick={() => setShow(false)}
+              className="text-decoration-none text-dark d-flex align-items-center"
+            >
+              <img
+                src={defaultProfilePic}
+                alt="Profile"
+                className="rounded-circle me-2"
+                width="40"
+                height="40"
+              />
+              <span>{profileName}</span> {/* Dynamic Profile Name */}
+            </Link>
+          </Offcanvas.Title>
+        </Offcanvas.Header>
+
+        <Offcanvas.Body>
+          <nav className="nav flex-column">
+            <Link className="nav-link text-dark" to="/Learner" onClick={() => setShow(false)}>
+              <FaHome className="me-2" /> Home
+            </Link>
+            <Link className="nav-link text-dark" to="/Learner/courses" onClick={() => setShow(false)}>
+              <FaBook className="me-2" /> Courses
+            </Link>
+            <Link className="nav-link text-dark" to="/Learner/my-learning" onClick={() => setShow(false)}>
+              <FaChartBar className="me-2" /> My Learning
+            </Link>
+            <Link className="nav-link text-dark" to="/Learner/wishlist" onClick={() => setShow(false)}>
+              <FaHeart className="me-2" /> Wishlist
+            </Link>
+          </nav>
+        </Offcanvas.Body>
+      </Offcanvas>
+    </>
+  );
+};
+
+export default Sidebar;
