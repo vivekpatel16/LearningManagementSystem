@@ -13,13 +13,15 @@ const videoSchema = new mongoose.Schema(
     video_description:{
       type: String,
     },
-    course_id: {
+    chapter_id: {
       type:  mongoose.Schema.Types.ObjectId,
       required: true,
-      ref: "CoursesInfo",
+      ref: "Chapter",
     },
+   
   },
   { timestamps: true } 
 );
 
-module.exports = mongoose.model("VideoInfo", videoSchema);
+const video =mongoose.models.videoInfo ||mongoose.model("VideoInfo", videoSchema);
+module.exports=video;
