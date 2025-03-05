@@ -18,7 +18,7 @@ const chapterSchema = new mongoose.Schema(
     course_id:
     {
         type: mongoose.Schema.Types.ObjectId,
-        required:true,
+        // required:true,
         ref:"CoursesInfo"
     }
   },

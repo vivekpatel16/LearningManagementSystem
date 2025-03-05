@@ -30,11 +30,6 @@ const coursesInfoSchema = new mongoose.Schema(
       type:Boolean,
       default:true,
       required:true
-    },
-    chapter_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      required:true,
-      ref:"Chapter"
     }
   },
   { timestamps: true }
