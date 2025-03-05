@@ -1,67 +1,70 @@
-import React, { useState } from "react";
-import { Table, Button } from "react-bootstrap";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { FaEdit, FaTrash } from "react-icons/fa";
 
-const MyCourse = () => {
-  // Sample courses added by the instructor
-  const [courses, setCourses] = useState([
-    {
-      id: 1,
-      title: "React for Beginners",
-      category: "Programming & Scripting",
-      description: "Learn React basics with this comprehensive course.",
-      image: "https://via.placeholder.com/100",
-    },
-    {
-      id: 2,
-      title: "UI/UX Design Principles",
-      category: "UI/UX & Web Design",
-      description: "Master the principles of UI/UX design.",
-      image: "https://via.placeholder.com/100",
-    },
-  ]);
+const CourseList = () => {
+  const [courses, setCourses] = useState([]);
+  const navigate = useNavigate();
 
-  const handleDelete = (id) => {
+  useEffect(() => {
+    const storedCourses = JSON.parse(localStorage.getItem("courses")) || [];
+    console.log("Loaded courses from localStorage:", storedCourses); // Debugging
+    setCourses(storedCourses);
+  }, []);
+
+  const handleEditCourse = (course) => {
+    navigate("/instructor/courses/add-chapter", { state: { course } });
+  };
+
+  const handleDeleteCourse = (courseId) => {
     if (window.confirm("Are you sure you want to delete this course?")) {
-      setCourses(courses.filter((course) => course.id !== id));
+      const updatedCourses = courses.filter((course) => course.id !== courseId);
+      setCourses(updatedCourses);
+      localStorage.setItem("courses", JSON.stringify(updatedCourses));
     }
   };
 
   return (
     <div className="container mt-4">
-      <h2 className="text-center mb-4">My Courses</h2>
-      <Table striped bordered hover responsive>
-        <thead className="bg-dark text-white">
-          <tr>
-            <th>Image</th>
-            <th>Title</th>
-            <th>Category</th>
-            <th>Description</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {courses.map((course) => (
-            <tr key={course.id}>
-              <td>
-                <img src={course.image} alt={course.title} width="80" />
-              </td>
-              <td>{course.title}</td>
-              <td>{course.category}</td>
-              <td>{course.description}</td>
-              <td>
-                <Button variant="info" className="me-2">
-                  Edit
-                </Button>
-                <Button variant="danger" onClick={() => handleDelete(course.id)}>
-                  Delete
-                </Button>
-              </td>
-            </tr>
+      <h2 className="text-center mb-4">Course List</h2>
+      {courses.length === 0 ? (
+        <p>No courses available. Please add and save a course.</p>
+      ) : (
+        <div className="row">
+          {courses.map((course, index) => (
+            <div key={course.id || `course-${index}`} className="col-md-4 mb-3">
+              <div className="card shadow-sm">
+                <img
+                  src={course.image || "https://via.placeholder.com/300"}
+                  className="card-img-top"
+                  alt={course.title}
+                />
+                <div className="card-body">
+                  <h5 className="card-title">{course.title}</h5>
+                  <p className="card-text">{course.description}</p>
+                  <p><strong>Category:</strong> {course.category}</p>
+                  <div className="d-flex justify-content-between">
+                    <button
+                      className="btn btn-primary me-2"
+                      onClick={() => handleEditCourse(course)}
+                    >
+                      <FaEdit /> Edit
+                    </button>
+                    <button
+                      className="btn btn-danger"
+                      onClick={() => handleDeleteCourse(course.id)}
+                    >
+                      <FaTrash /> Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           ))}
-        </tbody>
-      </Table>
+        </div>
+      )}
     </div>
   );
 };
 
-export default MyCourse;
+export default CourseList;

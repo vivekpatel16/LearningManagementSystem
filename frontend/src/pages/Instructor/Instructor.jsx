@@ -7,7 +7,7 @@ import CourseManagement from "./CourseManagement";
 import AddChapter from "./AddChapter";
 import AddVideo from "./AddVideo";
 import Profile from "./Profile";
-import MyCourse from "./MyCourse"; 
+import MyCourse from "./MyCourse";
 
 const Instructor = () => {
   return (

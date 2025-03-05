@@ -1,10 +1,10 @@
 import React, { useState } from "react"; 
 import { Link } from "react-router-dom";
 import { Offcanvas, Button } from "react-bootstrap";
-import { FaBars, FaBook, FaChartBar  } from "react-icons/fa";
+import { FaBars, FaBook, FaChartBar } from "react-icons/fa";
 import defaultProfilePic from "./th.jpeg";
 
-const AdminSidebar = () => {
+const Sidebar = () => {
   const [show, setShow] = useState(false);
 
   return (
@@ -42,13 +42,14 @@ const AdminSidebar = () => {
         <Offcanvas.Body>
           <nav className="nav flex-column">
             <Link className="nav-link text-dark" to="/Instructor/Dashboard" onClick={() => setShow(false)}>
-              <FaChartBar  className="me-2" /> Dashboard
+              <FaChartBar className="me-2" /> Dashboard
             </Link>
             <Link className="nav-link text-dark" to="/Instructor/courses" onClick={() => setShow(false)}>
               <FaBook className="me-2" /> Course Management
             </Link>
-            
-            
+            <Link className="nav-link text-dark" to="/Instructor/my-courses" onClick={() => setShow(false)}>
+              <FaBook className="me-2" /> My Courses
+            </Link>
           </nav>
         </Offcanvas.Body>
       </Offcanvas>
@@ -56,4 +57,4 @@ const AdminSidebar = () => {
   );
 };
 
-export default AdminSidebar;
+export default Sidebar;

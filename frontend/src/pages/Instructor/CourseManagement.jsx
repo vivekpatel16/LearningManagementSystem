@@ -8,6 +8,7 @@ const CourseManagement = () => {
     description: "",
     category: "",
     image: "",
+    chapters: [],  // Store chapters within the course object
   });
 
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ const CourseManagement = () => {
       alert("All fields including image are required.");
       return;
     }
-    // Pass course details to AddChapter
+
     navigate("/instructor/courses/add-chapter", { state: { course: newCourse } });
   };
 
