@@ -1,11 +1,11 @@
 import React from "react";
 import { Container } from "react-bootstrap";
 import { Routes, Route, Navigate } from "react-router-dom";
-import Sidebar from "./sidebar";  // ✅ Ensure Sidebar is correctly exported from sidebar.jsx
+import Sidebar from "../../Components/Sidebar";  // ✅ Ensure Sidebar is correctly exported from sidebar.jsx
 import Header from "../../Components/Header";  // ✅ Ensure Header is correctly exported
 import Dashboard from "./Dashboard";  // ✅ Ensure Dashboard is default exported
 import CourseManagement from "./CourseManagement";  // ✅ Ensure default export
-import Profile from "./Profile";  // ✅ Ensure default export
+import Profile from "../../Components/Profile";  // ✅ Ensure default export
 
 const Instructor = () => {
   return (
