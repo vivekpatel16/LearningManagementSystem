@@ -118,7 +118,6 @@ exports.updateCourse = async (req, res) => {
       }
     }
 
-    
     if (title) course.title = title;
     if (description) course.description = description;
     if (category_name) course.category_name = category_name;
