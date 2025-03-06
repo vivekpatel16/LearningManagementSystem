@@ -1,9 +1,9 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
+import common_API from "../../Api/commonApi";
 
 export const loginUser = createAsyncThunk("users/loginUser", async (credentials, { rejectWithValue }) => {
   try {
-    const response = await axios.post("http://localhost:5000/api/users/login", credentials, {
+    const response = await common_API.post("/login", credentials, {
       headers: { "Content-Type": "application/json" },
     });
     localStorage.setItem("user", JSON.stringify(response.data.user));
