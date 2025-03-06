@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import axios from "axios";
 import { FaPlus, FaEdit, FaTrash, FaSave } from "react-icons/fa";
+import axios from "axios";
+import { Button, Modal, Form, Container, Row, Col, Card } from "react-bootstrap";
 import Courses_API from "../../Api/courseApi";
 
 const ChapterManagement = () => {
@@ -10,136 +11,200 @@ const ChapterManagement = () => {
   const [course, setCourse] = useState(location.state?.course || {});
   const [chapters, setChapters] = useState([]);
   const [chapterTitle, setChapterTitle] = useState("");
+  const [chapterDescription, setChapterDescription] = useState("");
   const [editingChapter, setEditingChapter] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    if (course?._id) {
-      Courses_API
-        .get(`/chapter/${course._id}`)
-        .then((response) => setChapters(response.data))
-        .catch((error) => console.error("Error fetching chapters:", error));
+    if (!location.state?.course) {
+      alert("No course data found. Redirecting...");
+      navigate("/instructor/courses");
+    } else {
+      setCourse(location.state.course);
+      fetchChapters();
     }
-  }, [course]);
+  }, [location.state, navigate]);
+
+  const fetchChapters = async () => {
+    try {
+      const response = await Courses_API.get(`chapter/${course._id}`);
+      setChapters(response.data);
+    } catch (error) {
+      console.error("Error fetching chapters:", error);
+    }
+  };
 
   const handleAddChapter = async () => {
     if (!chapterTitle.trim()) {
-      alert("Please enter a chapter title.");
+      alert("Chapter title is required!");
       return;
     }
 
+    const chapterData = {
+      chapter_title: chapterTitle,
+      chapter_description: chapterDescription,
+      course_id: course._id,
+    };
+
     try {
-      const response = await Courses_API.post("/chapter", {
-        course_id: course._id,
-        chapter_title: chapterTitle,
-        chapter_description: "New Chapter",
-        order: chapters.length + 1,
-      });
-      
-      setChapters([...chapters, response.data]);
+      await Courses_API.post(`/chapter`,chapterData);
+
       setChapterTitle("");
-      alert("Chapter added successfully!");
+      setChapterDescription("");
+      fetchChapters();
     } catch (error) {
-      console.error("Error adding chapter:", error);
-      alert("Failed to add chapter.");
+      console.error("Error saving chapter:", error);
+      alert(error.response?.data?.message || "An error occurred.");
+    }
+  };
+
+  const handleDeleteChapter = async (id) => {
+    if (!id) {
+      console.error("Error: Chapter ID is undefined");
+      alert("Invalid chapter ID. Cannot delete.");
+      return;
+    }
+    try {
+      await Courses_API.delete(`chapter/${id}`);
+
+      setChapters(chapters.filter((ch) => ch._id !== id));
+    } catch (error) {
+      console.error("Error deleting chapter:", error);
+      alert("Failed to delete chapter. Please try again.");
     }
   };
 
   const handleEditChapter = (chapter) => {
-    setChapterTitle(chapter.chapter_title);
     setEditingChapter(chapter);
+    setShowModal(true);
   };
 
   const handleUpdateChapter = async () => {
     if (!editingChapter) return;
 
+    const updatedChapter = {
+      chapter_title: editingChapter.chapter_title,
+      chapter_description: editingChapter.chapter_description,
+    };
+
     try {
-      await Courses_API.put(`/chapter/${editingChapter._id}`, {
-        chapter_title: chapterTitle,
-      });
+      await Courses_API.patch(`chapter/${editingChapter._id}`,updatedChapter);
 
       setChapters(
         chapters.map((ch) =>
-          ch._id === editingChapter._id ? { ...ch, chapter_title: chapterTitle } : ch
+          ch._id === editingChapter._id ? { ...ch, ...updatedChapter } : ch
         )
       );
+      setShowModal(false);
       setEditingChapter(null);
-      setChapterTitle("");
-      alert("Chapter updated successfully!");
     } catch (error) {
       console.error("Error updating chapter:", error);
       alert("Failed to update chapter.");
     }
   };
 
-  const handleDeleteChapter = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this chapter?")) return;
-
-    try {
-      await Courses_API.delete(`/chapter/${id}`);
-      setChapters(chapters.filter((chapter) => chapter._id !== id));
-      alert("Chapter deleted successfully!");
-    } catch (error) {
-      console.error("Error deleting chapter:", error);
-      alert("Failed to delete chapter.");
-    }
-  };
-
-  const handleAddVideo = (chapter) => {
-    navigate("/instructor/courses/add-videos", { state: { chapterId: chapter._id, videos: chapter.videos } });
-  };
-
   return (
-    <div className="container mt-4">
-      <h2>Edit Chapters for {course.title || "Untitled Course"}</h2>
-      <div className="mb-3">
-        <input
-          type="text"
-          className="form-control"
-          placeholder="Enter Chapter Title"
-          value={chapterTitle}
-          onChange={(e) => setChapterTitle(e.target.value)}
-        />
-        <button className="btn btn-success mt-2" onClick={editingChapter ? handleUpdateChapter : handleAddChapter}>
-          <FaPlus /> {editingChapter ? "Update Chapter" : "Add Chapter"}
-        </button>
-      </div>
+    <Container className="mt-4">
+      <h2>Chapters Management for {course.title || "Untitled Course"}</h2>
+      <Card className="p-3 mb-4">
+        <h4>Add a New Chapter</h4>
+        <Form>
+          <Form.Group className="mb-2">
+            <Form.Control
+              type="text"
+              placeholder="Enter Chapter Title"
+              value={chapterTitle}
+              onChange={(e) => setChapterTitle(e.target.value)}
+            />
+          </Form.Group>
+          <Form.Group className="mb-2">
+            <Form.Control
+              as="textarea"
+              placeholder="Enter Chapter Description"
+              value={chapterDescription}
+              onChange={(e) => setChapterDescription(e.target.value)}
+            />
+          </Form.Group>
+          <Button variant="success" onClick={handleAddChapter}>
+            <FaPlus /> Add Chapter
+          </Button>
+        </Form>
+      </Card>
 
       <h3>Chapter List</h3>
       {chapters.length > 0 ? (
         chapters.map((chapter, index) => (
-          <div key={chapter._id} className="border p-3 mb-2">
-            <div className="d-flex justify-content-between align-items-center">
-              <span>
-                <strong>Chapter {index + 1}: {chapter.chapter_title}</strong>
-              </span>
-              <div>
-                <button className="btn btn-secondary me-2" onClick={() => handleEditChapter(chapter)}>
-                  <FaEdit /> Edit Chapter
-                </button>
-                <button className="btn btn-primary me-2" onClick={() => handleAddVideo(chapter)}>
+          <Card key={chapter._id} className="p-3 mb-3">
+            <Row className="align-items-center">
+              <Col>
+                <h5>Chapter {index + 1}: {chapter.chapter_title}</h5>
+                <p className="text-muted">{chapter.chapter_description}</p>
+              </Col>
+              <Col className="text-end">
+                <Button variant="secondary" className="me-2" onClick={() => handleEditChapter(chapter)}>
+                  <FaEdit /> Edit
+                </Button>
+                <Button
+                  variant="primary"
+                  className="me-2"
+                  onClick={() => navigate("/instructor/courses/add-videos", { state: { chapterId: chapter._id } })}
+                >
                   <FaEdit /> Add/Edit Video
-                </button>
-                <button className="btn btn-danger" onClick={() => handleDeleteChapter(chapter._id)}>
+                </Button>
+                <Button variant="danger" onClick={() => handleDeleteChapter(chapter._id)}>
                   <FaTrash /> Delete
-                </button>
-              </div>
-            </div>
-
-            {chapter.videos?.length > 0 && (
-              <ul className="mt-2">
-                {chapter.videos.map((video, vIndex) => (
-                  <li key={vIndex}>
-                    🎥 {video.video_title} - <i>{video.video_url}</i>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                </Button>
+              </Col>
+            </Row>
+          </Card>
         ))
       ) : (
         <p>No chapters added yet.</p>
       )}
-    </div>
+
+      <Button className="mt-3" variant="primary" onClick={() => navigate("/instructor/courses")}>
+        <FaSave /> Save Course
+      </Button>
+
+      {/* Bootstrap Modal for Editing Chapters */}
+      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Edit Chapter</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-2">
+              <Form.Control
+                type="text"
+                placeholder="Enter Chapter Title"
+                value={editingChapter?.chapter_title || ""}
+                onChange={(e) =>
+                  setEditingChapter({ ...editingChapter, chapter_title: e.target.value })
+                }
+              />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Control
+                as="textarea"
+                placeholder="Enter Chapter Description"
+                value={editingChapter?.chapter_description || ""}
+                onChange={(e) =>
+                  setEditingChapter({ ...editingChapter, chapter_description: e.target.value })
+                }
+              />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>
+            Close
+          </Button>
+          <Button variant="success" onClick={handleUpdateChapter}>
+            <FaSave /> Save Changes
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </Container>
   );
 };
 
