@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Card, Table, Button, Spinner } from "react-bootstrap";
 import Sidebar from "../../Components/Sidebar";
 import Header from "../../Components/Header";
-import API from "../../Api/commonApi";
 import { FaUsers, FaBook, FaUserGraduate, FaChartLine, FaChalkboardTeacher } from "react-icons/fa";
+import common_API from "../../Api/commonApi";
 
 const Dashboard = () => {
   const [totalUsers, setTotalUsers] = useState(0);
@@ -21,7 +21,7 @@ const Dashboard = () => {
           return;
         }
 
-        const response = await API.get("/users/courses");
+        const response = await common_API.get("/courses");
 
         if (response.data) {
           setTotalUsers(response.data.totalUser);
@@ -35,7 +35,7 @@ const Dashboard = () => {
 
     const fetchRecentActivities = async () => {
       try {
-        const response = await API.get("/users/recent-activities");
+        const response = await common_API.get("/recent-activities");
         setRecentActivities(response.data.data);
       } catch (error) {
         console.error("Error fetching recent activities:", error.response?.data || error.message);
