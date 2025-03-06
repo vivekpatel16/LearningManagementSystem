@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Card, Table, Button, Spinner } from "react-bootstrap";
 import Sidebar from "../../Components/Sidebar";
 import Header from "../../Components/Header";
-import API from "../../Api/authApi";
+import API from "../../Api/commonApi";
 import { FaUsers, FaBook, FaUserGraduate, FaChartLine, FaChalkboardTeacher } from "react-icons/fa";
 
 const Dashboard = () => {

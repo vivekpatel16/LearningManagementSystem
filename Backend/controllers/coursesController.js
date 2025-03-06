@@ -15,8 +15,8 @@ exports.addCourses = async (req, res) => {
         message: "Only instructors are authorized to add courses.",
       });
     }
-    const { title, description, category_name, thumbnail } = req.body;
-    const category = await Category.findOne({ category_name });
+    const { title, description, category_id, thumbnail } = req.body;
+    const category = await Category.findById( category_id );
     if (!category) {
       return res.status(400).json({ message: "Invalid category name provided." });
     }
@@ -52,8 +52,10 @@ exports.fetchCourses = async (req, res) => {
     const totalInstructor=allUser.filter((u)=>u.role==="instructor").length;
     const allCourses=await Courses.countDocuments({});
     let courses;
+    let instructorCoursesCount = 0;
     if (req.user.role === "instructor") {
       courses = await Courses.find({ created_by: req.user.id }).populate("created_by","user_name");
+      instructorCoursesCount = await Courses.countDocuments({ created_by: req.user.id });
     } else {
       courses = await Courses.find({}).populate("created_by","user_name");
     }
@@ -61,7 +63,8 @@ exports.fetchCourses = async (req, res) => {
       data:courses || [],
       totalUser,
       totalInstructor,
-      allCourses
+      allCourses,
+      instructorCoursesCount
     });
   } catch (error) {
     console.log("Error fetching courses:", error);

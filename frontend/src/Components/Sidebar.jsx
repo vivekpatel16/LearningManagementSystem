@@ -70,8 +70,12 @@ const Sidebar = () => {
                   <FaChalkboardTeacher className="me-2" /> Dashboard
                 </Link>
                 <Link className="nav-link text-dark" to="/instructor/courses" onClick={() => setShow(false)}>
-                  <FaBook className="me-2" /> My Courses
+                  <FaBook className="me-2" /> Courses
                 </Link>
+                 <Link className="nav-link text-dark" to="/instructor/mycourses" onClick={() => setShow(false)}>
+                  <FaBook className="me-2" />  My Courses
+                </Link>
+                
               </>
             )}
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import API from "../../Api/authApi";
+import API from "../../Api/commonApi";
 import { Container, Table, Button, Badge, Card } from "react-bootstrap";
 import { FaToggleOn, FaToggleOff } from "react-icons/fa";
 
