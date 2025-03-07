@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from "react";
-import API from "../../Api/commonApi";
 import { Container, Table, Button, Badge, Card } from "react-bootstrap";
 import { FaToggleOn, FaToggleOff } from "react-icons/fa";
-
+import common_API from "../../Api/commonApi";
+import Admin_API from "../../Api/adminApi";
 const CourseManagement = () => {
   const [courses, setCourses] = useState([]);
 
   const fetchCourses = async () => {
     try {
-      const response = await API.get("/users/courses", {
+      const response = await common_API.get("/courses", {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -29,8 +29,7 @@ const CourseManagement = () => {
   const toggleStatus = async (_id, currentStatus) => {
     try {
       const newStatus = !currentStatus;
-      const response = await API.patch(
-        `/admin/course-status/${_id}`,
+      const response = await Admin_API.patch(`/course-status/${_id}`,
         { status: newStatus },
         {
           headers: {
