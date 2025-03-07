@@ -62,8 +62,6 @@ const CourseManagement = () => {
       thumbnail: newCourse.thumbnail,
     };
   
-   
-  
     try {
       const response = await Courses_API.post("/", courseData, {
         headers: { "Content-Type": "application/json" },
