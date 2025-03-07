@@ -3,7 +3,6 @@ import { Form, Button } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import Courses_API from "../../Api/courseApi";
 
-
 const CourseManagement = () => {
   const [newCourse, setNewCourse] = useState({
     title: "",
@@ -47,37 +46,39 @@ const CourseManagement = () => {
     }
   };
   
+const handleAddCourse = async () => {
+  if (!newCourse.title || !newCourse.description || !newCourse.category_id || !newCourse.thumbnail) {
+    alert("All fields including thumbnail are required.");
+    console.log(newCourse);
+    return;
+  }
 
-  const handleAddCourse = async () => {
-    if (!newCourse.title || !newCourse.description || !newCourse.category_id || !newCourse.thumbnail) {
-      alert("All fields including thumbnail are required.");
-      console.log(newCourse);
-      return;
-    }
-    
-    const courseData = {
-      title: newCourse.title,
-      description: newCourse.description,
-      category_id: newCourse.category_id, 
-      thumbnail: newCourse.thumbnail,
-    };
-  
-   
-  
-    try {
-      const response = await Courses_API.post("/", courseData, {
-        headers: { "Content-Type": "application/json" },
-      });
-  
-      console.log("Course added successfully:", response.data);
-      navigate("/instructor/courses/add-chapter", { state: { course: response.data } });
-  
-    } catch (error) {
-      console.error("Error adding course:", error.response?.data || error.message);
-      alert(`Failed to add course: ${error.response?.data?.message || "Unknown error"}`);
-    }
+  const courseData = {
+    title: newCourse.title,
+    description: newCourse.description,
+    category_id: newCourse.category_id,
+    thumbnail: newCourse.thumbnail,
   };
-     
+
+  try {
+    const response = await Courses_API.post("/", courseData, {
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (response.data.data && response.data.data._id) {
+      console.log("Course added successfully:", response.data);
+      navigate("/instructor/courses/add-chapter", { state: { course: response.data.data } });
+    } else {
+      alert("Course ID not generated. Please try again.");
+    }
+  } catch (error) {
+    console.error("Error adding course:", error.response?.data || error.message);
+    alert(`Failed to add course: ${error.response?.data?.message || "Unknown error"}`);
+  }
+};
+
+
+
   return (
     <div className="container mt-4">
       <h2 className="text-center mb-4">Add Course</h2>
@@ -130,3 +131,5 @@ const CourseManagement = () => {
 };
 
 export default CourseManagement;
+
+
