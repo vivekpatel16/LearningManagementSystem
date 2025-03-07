@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FaPlus, FaEdit, FaTrash, FaSave } from "react-icons/fa";
-import axios from "axios";
 import { Button, Modal, Form, Container, Row, Col, Card } from "react-bootstrap";
 import Courses_API from "../../Api/courseApi";
 
@@ -28,7 +27,6 @@ const ChapterManagement = () => {
   const fetchChapters = async () => {
     try {
       const response = await Courses_API.get(`chapter/${course._id}`);
-    
       setChapters(response.data);
     } catch (error) {
       console.error("Error fetching chapters:", error);
@@ -65,7 +63,7 @@ const ChapterManagement = () => {
       return;
     }
     try {
-      await Courses_API.delete(`chapter/${id}`);
+      await Courses_API.delete(`/chapter/${id}`);
 
       setChapters(chapters.filter((ch) => ch._id !== id));
     } catch (error) {
@@ -160,8 +158,7 @@ const ChapterManagement = () => {
       ) : (
         <p>No chapters added yet.</p>
       )}
-
-      <Button className="mt-3" variant="primary" onClick={() => navigate("/instructor/mycourses")}>
+      <Button className="mt-3" variant="primary" onClick={() => navigate("/instructor/mycourses",{ state: { newCourse: course }})}>
         <FaSave /> Save Course
       </Button>
 
