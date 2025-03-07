@@ -1,22 +1,29 @@
 const video = require("../models/VideoModel");
+const chapter=require("../models/chapterModel");
+const mongoose = require("mongoose");
 const fs = require("fs");
 const path = require("path");
+
+
 exports.uploadVideo = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No video uploaded" });
     }
-    const { title, description, chapter_id } = req.body;
+
+    const { video_title, video_description, chapter_id } = req.body;  
+    console.log(req.body);
+    console.log(req.file);
+    console.log("Received chapter_id:", chapter_id);  // ✅ Fix logging order
 
     const newVideo = new video({
-      video_url: `/uploads/videos/${req.file.filename}`,
-      video_title: title,
-      video_description: description,
-      chapter_id
+      video_url: `/uploads/videos/${req.file.filename}`,  // ✅ Correct file key
+      video_title: video_title,
+      video_description: video_description,
+      chapter_id: chapter_id
     });
 
     await newVideo.save();
-
     res.status(201).json({ message: "Video uploaded successfully", video: newVideo });
   } catch (error) {
     console.error("Error uploading video:", error);
@@ -106,7 +113,6 @@ exports.editVideoDetails = async (req, res) => {
         updateFields.video_url = `/uploads/videos/${req.file.filename}`;
       }
   
-      
       const updatedVideo = await video.findByIdAndUpdate(
         video_id,
         { $set: updateFields },

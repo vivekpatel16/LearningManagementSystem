@@ -26,13 +26,12 @@ const ChapterManagement = () => {
 
   const fetchChapters = async () => {
     try {
-      const response = await Courses_API.get(`/chapter/${course._id}`);
+      const response = await Courses_API.get(`chapter/${course._id}`);
       setChapters(response.data);
     } catch (error) {
       console.error("Error fetching chapters:", error);
     }
   };
-
   const handleAddChapter = async () => {
     if (!chapterTitle.trim()) {
       alert("Chapter title is required!");
@@ -101,7 +100,6 @@ const ChapterManagement = () => {
       alert("Failed to update chapter.");
     }
   };
-
   return (
     <Container className="mt-4">
       <h2>Chapters Management for {course.title || "Untitled Course"}</h2>
@@ -146,7 +144,7 @@ const ChapterManagement = () => {
                 <Button
                   variant="primary"
                   className="me-2"
-                  onClick={() => navigate("/instructor/courses/add-videos", { state: { chapterId: chapter._id } })}
+                  onClick={() => navigate("/instructor/courses/add-videos", { state: { chapter_id: chapter._id , chapter_title:chapter.chapter_title } })}
                 >
                   <FaEdit /> Add/Edit Video
                 </Button>
@@ -160,7 +158,6 @@ const ChapterManagement = () => {
       ) : (
         <p>No chapters added yet.</p>
       )}
-
       <Button className="mt-3" variant="primary" onClick={() => navigate("/instructor/mycourses",{ state: { newCourse: course }})}>
         <FaSave /> Save Course
       </Button>
@@ -208,3 +205,5 @@ const ChapterManagement = () => {
 };
 
 export default ChapterManagement;
+
+

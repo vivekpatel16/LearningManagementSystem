@@ -71,7 +71,7 @@ function App() {
         <Route path="/instructor/courses" element={<PrivateRoute element={<InstructorCourses />} roles={["instructor"]} />} />
         <Route path="/instructor/mycourses" element={<PrivateRoute element={<MyCourses />} roles={["instructor"]} />} />
         <Route path="/instructor/courses/add-chapter" element={<PrivateRoute element={<ChapterManagement />} roles={["instructor"]} />} />
-        <Route path="/instructor/courses/add-video" element={<PrivateRoute element={<VideoManagement />} roles={["instructor"]} />} />
+        <Route path="/instructor/courses/add-videos" element={<PrivateRoute element={<VideoManagement />} roles={["instructor"]} />} />
 
         {/* User (Learner) Routes */}
         <Route path="/home" element={<PrivateRoute element={<Home />} roles={["user"]} />} />

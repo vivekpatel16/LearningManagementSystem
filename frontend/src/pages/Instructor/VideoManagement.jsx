@@ -1,96 +1,197 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FaPlus, FaTrash, FaSave } from "react-icons/fa";
+import { FaTrash, FaSave, FaPlus, FaEdit } from "react-icons/fa";
+import { Button, Form, Container, Row, Col, Card, Modal } from "react-bootstrap";
+import Courses_API from "../../Api/courseApi";
 
 const VideoManagement = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { chapterId } = location.state || {};
-
-  const [videos, setVideos] = useState(() => {
-    return JSON.parse(localStorage.getItem(`videos-${chapterId}`)) || [];
-  });
+  const { chapter_id, chapter_title } = location.state || {};
+  const [videos, setVideos] = useState([]);
+  const [videoTitle, setVideoTitle] = useState("");
+  const [videoDescription, setVideoDescription] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editVideo, setEditVideo] = useState(null);
+  const [editedTitle, setEditedTitle] = useState("");
+  const [editedDescription, setEditedDescription] = useState("");
 
   useEffect(() => {
-    localStorage.setItem(`videos-${chapterId}`, JSON.stringify(videos));
-  }, [videos, chapterId]);
-
-  const handleAddVideo = () => {
-    setVideos([...videos, { id: Date.now(), title: "", fileName: "" }]);
-  };
-
-  const handleRemoveVideo = (id) => {
-    setVideos(videos.filter((video) => video.id !== id));
-  };
-
-  const handleVideoChange = (index, field, value) => {
-    const updatedVideos = [...videos];
-    updatedVideos[index][field] = value;
-    setVideos(updatedVideos);
-  };
-
-  const handleFileChange = (index, event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const updatedVideos = [...videos];
-      updatedVideos[index].fileName = file.name;
-      setVideos(updatedVideos);
+    if (chapter_id) {
+      Courses_API.get(`/video/${chapter_id}`)
+        .then((response) => setVideos(response.data))
+        .catch((error) => console.error("Error fetching videos:", error));
     }
-  };
+  }, [chapter_id]);
 
-  const handleSaveVideos = () => {
-    if (videos.length === 0) {
-      alert("Please add at least one video before saving.");
+  const handleAddVideo = async () => {
+    if (!videoTitle.trim() || !videoDescription.trim() || !selectedFile) {
+      alert("Please enter a title, description, and select a video file.");
       return;
     }
 
-    for (let video of videos) {
-      if (!video.title.trim() || !video.fileName) {
-        alert("Please fill in all video titles and select a file before saving.");
-        return;
+    try {
+      const formData = new FormData();
+      formData.append("video", selectedFile);
+      formData.append("video_title", videoTitle);
+      formData.append("video_description", videoDescription);
+      formData.append("chapter_id", chapter_id);
+
+      const response = await Courses_API.post("/video", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (response.data && response.data.video) {
+        setVideos([...videos, response.data.video]);
       }
+
+      setVideoTitle("");
+      setVideoDescription("");
+      setSelectedFile(null);
+    } catch (error) {
+      console.error("Error adding video:", error);
+      alert("Failed to upload video");
     }
-
-    // Store updated videos in localStorage
-    localStorage.setItem(`videos-${chapterId}`, JSON.stringify(videos));
-
-    // Navigate back to AddChapter.jsx with updated videos
-    navigate(-1, { state: { chapterId, updatedVideos: videos } });
   };
 
-  return (
-    <div className="container mt-4">
-      <h2>Manage Videos</h2>
+  const handleDeleteVideo = async (id) => {
+    try {
+      await Courses_API.delete(`/video/${id}`);
+      setVideos(videos.filter((video) => video._id !== id));
+    } catch (error) {
+      console.error("Error deleting video:", error);
+    }
+  };
 
-      <h4>Videos</h4>
-      {videos.map((video, index) => (
-        <div key={video.id} className="border p-3 mb-2">
-          <label>Video {index + 1} Title</label>
-          <input
-            type="text"
-            className="form-control"
-            value={video.title}
-            onChange={(e) => handleVideoChange(index, "title", e.target.value)}
-          />
-          <label>Upload Video</label>
-          <input
-            type="file"
-            className="form-control"
-            onChange={(e) => handleFileChange(index, e)}
-          />
-          {video.fileName && <p>Selected: {video.fileName}</p>}
-          <button className="btn btn-danger mt-2" onClick={() => handleRemoveVideo(video.id)}>
-            <FaTrash /> Remove Video
-          </button>
-        </div>
-      ))}
-      <button className="btn btn-success mt-3" onClick={handleAddVideo}>
-        <FaPlus /> Add Video
-      </button>
-      <button className="btn btn-primary mt-3 ms-2" onClick={handleSaveVideos}>
-        <FaSave /> Save Changes
-      </button>
-    </div>
+  const handleEditClick = (video) => {
+    setEditVideo(video);
+    setEditedTitle(video.video_title);
+    setEditedDescription(video.video_description);
+    setShowEditModal(true);
+  };
+
+
+  const handleUpdateVideo = async () => {
+    if (!editVideo || !editedTitle.trim() || !editedDescription.trim()) {
+      return;
+    }
+  
+    try {
+      const updatedVideo = {
+        video_title: editedTitle,
+        video_description: editedDescription,
+      };
+     
+   
+       await Courses_API.patch(`/video/${editVideo._id}`, updatedVideo);
+        setVideos(
+          videos.map((video) =>
+           video._id === editVideo._id ? { ...video, ...updatedVideo } : video
+       )
+      );
+      
+      setShowEditModal(false);
+      setEditVideo(null);
+    } catch (error) {
+      console.error("Error updating video:", error);
+      alert("Failed to update video.");
+    }
+  };
+  
+
+  return (
+    <Container className="mt-4">
+      <h2>Video Management for {chapter_title || "Unknown Chapter"}</h2>
+      <Card className="p-3 mb-4">
+        <h4>Add a New Video</h4>
+        <Form>
+          <Form.Group className="mb-2">
+            <Form.Control
+              type="text"
+              placeholder="Enter Video Title"
+              value={videoTitle}
+              onChange={(e) => setVideoTitle(e.target.value)}
+            />
+          </Form.Group>
+          <Form.Group className="mb-2">
+            <Form.Control
+              as="textarea"
+              rows={2}
+              placeholder="Enter Video Description"
+              value={videoDescription}
+              onChange={(e) => setVideoDescription(e.target.value)}
+            />
+          </Form.Group>
+          <Form.Group className="mb-2">
+            <Form.Control
+              type="file"
+              onChange={(e) => setSelectedFile(e.target.files[0])}
+            />
+          </Form.Group>
+          <Button variant="success" onClick={handleAddVideo}>
+            <FaPlus /> Add Video
+          </Button>
+        </Form>
+      </Card>
+
+      <h3>Video List</h3>
+      {videos.length > 0 ? (
+        videos.map((video, index) => (
+          <Card key={video._id} className="p-3 mb-3">
+            <Row className="align-items-center">
+              <Col>
+                <h5>Video {index + 1}: {video.video_title}</h5>
+                <p>{video.video_description}</p>
+              </Col>
+              <Col className="text-end">
+                <Button variant="warning" className="me-2" onClick={() => handleEditClick(video)}>
+                  <FaEdit /> Edit
+                </Button>
+                <Button variant="danger" onClick={() => handleDeleteVideo(video._id)}>
+                  <FaTrash /> Delete
+                </Button>
+              </Col>
+            </Row>
+          </Card>
+        ))
+      ) : (
+        <p className="text-muted">No videos added yet.</p>
+      )}
+
+      <Button className="mt-3" variant="primary" onClick={() => navigate(-1)}>
+        <FaSave /> Save Videos
+      </Button>
+
+      <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Edit Video</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group className="mb-2">
+            <Form.Control
+              type="text"
+              placeholder="Enter Video Title"
+              value={editedTitle}
+              onChange={(e) => setEditedTitle(e.target.value)}
+            />
+          </Form.Group>
+          <Form.Group className="mb-2">
+            <Form.Control
+              as="textarea"
+              rows={2}
+              placeholder="Enter Video Description"
+              value={editedDescription}
+              onChange={(e) => setEditedDescription(e.target.value)}
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</Button>
+          <Button variant="primary" onClick={handleUpdateVideo}>Update</Button>
+        </Modal.Footer>
+      </Modal>
+    </Container>
   );
 };
 

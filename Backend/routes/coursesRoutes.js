@@ -22,6 +22,6 @@ router.delete("/chapter/:chapter_id",authenticateUser,deleteChapter);
 
 router.post("/video",upload.single("video"),uploadVideo);
 router.get("/video/:chapter_id",getVideosByChapter);
-router.patch("/video/:video_id",upload.single("video_url"),authenticateUser,editVideoDetails);
+router.patch("/video/:video_id",upload.single("video"),authenticateUser,editVideoDetails);
 router.delete("/video/:video_id",authenticateUser,deleteVideo);
 module.exports = router;
