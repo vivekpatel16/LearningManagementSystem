@@ -10,7 +10,7 @@ dotenv.config();
 connectDb();
 
 const app = express();
-// app.use(cors());
+
 app.use(cors({ credentials: true }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: "200mb" }));
