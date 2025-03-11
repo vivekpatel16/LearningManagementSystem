@@ -1,6 +1,9 @@
 const UserInfo = require("../models/userInfoModel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const OTP = require("../models/otpModel");
+const nodemailer = require("nodemailer");
+const { generateOTP, sendEmail } = require("../config/emailConfig");
 require("dotenv").config();
 
 exports.loginUser = async (req, res) => {
@@ -23,22 +26,20 @@ exports.loginUser = async (req, res) => {
 
 exports.updateProfile = async(req,res)=>{
   try {
-    const userId = req.user.id; // Extracted from token
+    const userId = req.user.id; 
     const { user_name, password, user_image } = req.body;
 
-    // Find user by ID
+  
     let user = await UserInfo.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Update only provided fields
+    
     if (user_name) user.user_name = user_name;
     if (user_image) user.user_image = user_image;
 
     if (password) {
-      // const salt = await bcrypt.genSalt(10);
-      // user.password = await bcrypt.hash(password, salt);
       user.password = password;
     }
 
@@ -56,12 +57,109 @@ exports.deleteUserImage = async(req,res)=>{
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Remove image from the database
+
     user.user_image = "";
     await user.save();
 
     res.json({ message: "Profile image deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER || "your-email@gmail.com",
+    pass: process.env.EMAIL_PASSWORD || "your-app-password" 
+  }
+});
+
+exports.checkEmailAndSendOTP = async (req, res) => {
+  const { email } = req.body;
+  
+  try {
+    const user = await UserInfo.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "Email not found" });
+    }
+    const otp = generateOTP();
+    await OTP.create({
+      user_id:user._id,
+      email,
+      otp
+    });
+  
+    const html = `
+    <h1>Password Reset Request</h1>
+    <p>Your OTP for password reset is: <strong>${otp}</strong></p>
+    <p>This OTP will expire in 10 minutes.</p>
+    <p>If you did not request this, please ignore this email.</p>
+  `;
+  
+      await sendEmail(email, "Password Reset OTP", html);
+    
+    res.status(200).json({ message: "OTP sent successfully" });
+  } catch (error) {
+    console.error("Error sending OTP:", error);
+    res.status(500).json({ message: "Failed to send OTP", error: error.message });
+  }
+};
+
+
+exports.verifyOTP = async (req, res) => {
+  const { email, otp } = req.body;
+  
+  try {
+    const otpRecord = await OTP.findOne({ email, otp });
+    if (!otpRecord) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+    
+
+    if (otpRecord.expiresAt < new Date()) {
+      await OTP.findOneAndDelete({ email });
+      return res.status(400).json({ message: "OTP expired" });
+    }
+    
+     const resetToken = jwt.sign(
+          { email },
+          process.env.JWT_SECRET,
+          { expiresIn: '15m' } 
+        );
+        await OTP.findOneAndDelete({ email });
+      
+    res.status(200).json({ message: "OTP verified successfully",resetToken });
+  } catch (error) {
+    console.error("Error verifying OTP:", error);
+    res.status(500).json({ message: "Failed to verify OTP", error: error.message });
+  }
+};
+
+
+exports.resetPassword = async (req, res) => {
+  const { resetToken, newPassword } = req.body;
+  
+  try {
+    const decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
+    const { email } = decoded;
+    
+    const user = await UserInfo.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    
+    user.password = newPassword;
+    await user.save();
+    
+    res.status(200).json({ message: "Password reset successfully" });
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: "Invalid or expired reset token. Please try again." });
+    }
+    console.error("Error resetting password:", error);
+    res.status(500).json({ message: "Failed to reset password", error: error.message });
   }
 };
