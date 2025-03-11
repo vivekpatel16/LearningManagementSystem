@@ -10,6 +10,7 @@ dotenv.config();
 connectDb();
 
 const app = express();
+
 app.use(cors({ credentials: true }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: "200mb" }));
@@ -18,5 +19,6 @@ app.use("/uploads",express.static("uploads"));
 app.use("/api/users",commonRoutes);
 app.use("/api/admin",adminRoutes);
 app.use("/api/courses",coursesRoutes);
+
 const PORT =5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

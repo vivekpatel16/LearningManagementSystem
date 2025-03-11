@@ -1,24 +1,64 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Header from "../../Components/Header"; // Import Header component
+import Header from "../../Components/Header";
+import common_API from "../../Api/commonApi";
 
 const ResetPassword = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [resetToken, setResetToken] = useState("");
   const navigate = useNavigate();
 
-  const handleResetPassword = () => {
-    if (newPassword !== confirmPassword) {
-      alert("Passwords do not match!");
+  useEffect(() => {
+    // Get reset token from sessionStorage
+    const token = sessionStorage.getItem("resetToken");
+    
+    if (!token) {
+      // Redirect to forgot password page if token is not available
+      navigate("/forgot-password");
       return;
     }
-    console.log("Password Reset Successful");
+    
+    setResetToken(token);
+  }, [navigate]);
 
-    // Show success message
-    alert("Your password has been successfully reset. Redirecting to login...");
+  const handleResetPassword = async () => {
+    // Validate passwords
+    if (!newPassword || !confirmPassword) {
+      setError("Please enter both passwords");
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters long");
+      return;
+    }
 
-    // Redirect to login page
-    navigate("/");
+    try {
+      setLoading(true);
+      setError("");
+      await common_API.post("/reset-password", { resetToken, newPassword });
+      
+      // Clear sessionStorage
+      sessionStorage.removeItem("resetToken");
+      
+      // Show success message
+      alert("Your password has been successfully reset. Redirecting to login...");
+      
+      // Redirect to login page
+      navigate("/");
+    } catch (error) {
+      setError(error.response?.data?.message || "Failed to reset password");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -30,6 +70,12 @@ const ResetPassword = () => {
       <div className="d-flex align-items-center justify-content-center mt-5">
         <div className="card p-4 shadow-lg" style={{ width: "400px" }}>
           <h3 className="text-center mb-4">Reset Password</h3>
+          
+          {error && (
+            <div className="alert alert-danger" role="alert">
+              {error}
+            </div>
+          )}
 
           <div className="mb-3">
             <label className="form-label">New Password</label>
@@ -41,6 +87,9 @@ const ResetPassword = () => {
               onChange={(e) => setNewPassword(e.target.value)}
               required
             />
+            <small className="text-muted">
+              Password must be at least 8 characters long
+            </small>
           </div>
 
           <div className="mb-3">
@@ -55,8 +104,12 @@ const ResetPassword = () => {
             />
           </div>
 
-          <button className="btn btn-primary w-100" onClick={handleResetPassword}>
-            Reset Password
+          <button 
+            className="btn btn-primary w-100" 
+            onClick={handleResetPassword}
+            disabled={loading}
+          >
+            {loading ? "Resetting..." : "Reset Password"}
           </button>
         </div>
       </div>
