@@ -1,11 +1,11 @@
 import axios from "axios";
 
-const Courses_API = axios.create({ baseURL: "http://localhost:5000/api/courses" });
+const common_API = axios.create({ baseURL: "http://localhost:5000/api/users" });
 
-Courses_API.interceptors.request.use((req) => {
+common_API.interceptors.request.use((req) => {
   const token = localStorage.getItem("token");
   if (token) req.headers.Authorization = `Bearer ${token}`;
   return req;
 });
 
-export default Courses_API;
+export default common_API;

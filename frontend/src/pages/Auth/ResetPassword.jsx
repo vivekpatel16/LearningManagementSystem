@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Header from "../../Components/Header"; // Ensure correct path
+import Header from "../../Components/Header"; // Import Header component
 
 const ResetPassword = () => {
   const [newPassword, setNewPassword] = useState("");
