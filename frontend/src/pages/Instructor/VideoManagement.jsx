@@ -16,6 +16,7 @@ const VideoManagement = () => {
   const [editVideo, setEditVideo] = useState(null);
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
+  const [editedFile, setEditedFile] = useState(null);
 
   useEffect(() => {
     if (chapter_id) {
@@ -68,37 +69,44 @@ const VideoManagement = () => {
     setEditVideo(video);
     setEditedTitle(video.video_title);
     setEditedDescription(video.video_description);
+    setEditedFile(null);
     setShowEditModal(true);
   };
 
-
   const handleUpdateVideo = async () => {
     if (!editVideo || !editedTitle.trim() || !editedDescription.trim()) {
+      alert("Title and description cannot be empty.");
       return;
     }
-  
+
     try {
-      const updatedVideo = {
-        video_title: editedTitle,
-        video_description: editedDescription,
-      };
-     
-   
-       await Courses_API.patch(`/video/${editVideo._id}`, updatedVideo);
-        setVideos(
-          videos.map((video) =>
-           video._id === editVideo._id ? { ...video, ...updatedVideo } : video
-       )
+      const formData = new FormData();
+      formData.append("video_title", editedTitle);
+      formData.append("video_description", editedDescription);
+      if (editedFile) {
+        formData.append("video", editedFile);
+      }
+
+      await Courses_API.patch(`/video/${editVideo._id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      setVideos(
+        videos.map((video) =>
+          video._id === editVideo._id
+            ? { ...video, video_title: editedTitle, video_description: editedDescription }
+            : video
+        )
       );
-      
+
       setShowEditModal(false);
       setEditVideo(null);
+      alert("Changes have been updated successfully!");
     } catch (error) {
       console.error("Error updating video:", error);
       alert("Failed to update video.");
     }
   };
-  
 
   return (
     <Container className="mt-4">
@@ -107,31 +115,15 @@ const VideoManagement = () => {
         <h4>Add a New Video</h4>
         <Form>
           <Form.Group className="mb-2">
-            <Form.Control
-              type="text"
-              placeholder="Enter Video Title"
-              value={videoTitle}
-              onChange={(e) => setVideoTitle(e.target.value)}
-            />
+            <Form.Control type="text" placeholder="Enter Video Title" value={videoTitle} onChange={(e) => setVideoTitle(e.target.value)} />
           </Form.Group>
           <Form.Group className="mb-2">
-            <Form.Control
-              as="textarea"
-              rows={2}
-              placeholder="Enter Video Description"
-              value={videoDescription}
-              onChange={(e) => setVideoDescription(e.target.value)}
-            />
+            <Form.Control as="textarea" rows={2} placeholder="Enter Video Description" value={videoDescription} onChange={(e) => setVideoDescription(e.target.value)} />
           </Form.Group>
           <Form.Group className="mb-2">
-            <Form.Control
-              type="file"
-              onChange={(e) => setSelectedFile(e.target.files[0])}
-            />
+            <Form.Control type="file" accept="video/*" onChange={(e) => setSelectedFile(e.target.files[0])} />
           </Form.Group>
-          <Button variant="success" onClick={handleAddVideo}>
-            <FaPlus /> Add Video
-          </Button>
+          <Button variant="success" onClick={handleAddVideo}><FaPlus /> Add Video</Button>
         </Form>
       </Card>
 
@@ -145,12 +137,8 @@ const VideoManagement = () => {
                 <p>{video.video_description}</p>
               </Col>
               <Col className="text-end">
-                <Button variant="warning" className="me-2" onClick={() => handleEditClick(video)}>
-                  <FaEdit /> Edit
-                </Button>
-                <Button variant="danger" onClick={() => handleDeleteVideo(video._id)}>
-                  <FaTrash /> Delete
-                </Button>
+                <Button variant="primary" className="me-2" onClick={() => handleEditClick(video)}><FaEdit /> Edit</Button>
+                <Button variant="danger" onClick={() => handleDeleteVideo(video._id)}><FaTrash /> Delete</Button>
               </Col>
             </Row>
           </Card>
@@ -159,9 +147,7 @@ const VideoManagement = () => {
         <p className="text-muted">No videos added yet.</p>
       )}
 
-      <Button className="mt-3" variant="primary" onClick={() => navigate(-1)}>
-        <FaSave /> Save Videos
-      </Button>
+      <Button className="mt-3" variant="primary" onClick={() => navigate(-1)}><FaSave /> Save Videos</Button>
 
       <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
         <Modal.Header closeButton>
@@ -169,21 +155,13 @@ const VideoManagement = () => {
         </Modal.Header>
         <Modal.Body>
           <Form.Group className="mb-2">
-            <Form.Control
-              type="text"
-              placeholder="Enter Video Title"
-              value={editedTitle}
-              onChange={(e) => setEditedTitle(e.target.value)}
-            />
+            <Form.Control type="text" placeholder="Enter Video Title" value={editedTitle} onChange={(e) => setEditedTitle(e.target.value)} />
           </Form.Group>
           <Form.Group className="mb-2">
-            <Form.Control
-              as="textarea"
-              rows={2}
-              placeholder="Enter Video Description"
-              value={editedDescription}
-              onChange={(e) => setEditedDescription(e.target.value)}
-            />
+            <Form.Control as="textarea" rows={2} placeholder="Enter Video Description" value={editedDescription} onChange={(e) => setEditedDescription(e.target.value)} />
+          </Form.Group>
+          <Form.Group className="mb-2">
+            <Form.Control type="file" accept="video/*" onChange={(e) => setEditedFile(e.target.files[0])} />
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>
@@ -196,3 +174,5 @@ const VideoManagement = () => {
 };
 
 export default VideoManagement;
+
+
