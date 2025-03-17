@@ -2,8 +2,12 @@ const video = require("../models/videoModel");
 const fs = require("fs");
 const path = require("path");
 const ffmpeg = require("fluent-ffmpeg");
-// ffmpeg.setFfmpegPath("C:/ffmpeg/bin/ffmpeg.exe");
-// ffmpeg.setFfprobePath("C:/ffmpeg/bin/ffprobe.exe");
+const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+const ffprobePath = require('@ffprobe-installer/ffprobe').path;
+
+// Set the paths to the ffmpeg and ffprobe binaries from node_modules
+ffmpeg.setFfmpegPath(ffmpegPath);
+ffmpeg.setFfprobePath(ffprobePath);
 
 exports.uploadVideo = async (req, res) => {
   try {
