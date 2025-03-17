@@ -1,18 +1,21 @@
 import React, { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { Link } from "react-router-dom";
 import { Offcanvas, Button } from "react-bootstrap";
-import { FaBars, FaBook, FaUsers, FaChartBar, FaFileAlt, FaHeart, FaChalkboardTeacher, FaHome } from "react-icons/fa";
+import { FaBars, FaBook, FaUsers, FaChartBar, FaFileAlt, FaHeart, FaChalkboardTeacher, FaHome, FaSignOutAlt, FaFolderOpen } from "react-icons/fa";
 import defaultProfilePic from "../assets/th.png";
+import { logout } from "../features/auth/authSlice"; // Adjust import path if needed
+import Footer from "./Footer"; // Import Footer component
 
 const Sidebar = () => {
   const { user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
   const [profileImage, setProfileImage] = useState(defaultProfilePic);
-  const [show, setShow] = useState(false); // <-- Define show state
+  const [show, setShow] = useState(false);
 
   useEffect(() => {
     setProfileImage(user?.user_image || defaultProfilePic);
-  }, [user?.user_image]); // Sidebar will now update when user_image changes
+  }, [user?.user_image]);
 
   return (
     <>
@@ -45,7 +48,7 @@ const Sidebar = () => {
           </Offcanvas.Title>
         </Offcanvas.Header>
 
-        <Offcanvas.Body>
+        <Offcanvas.Body className="d-flex flex-column justify-content-between">
           <nav className="nav flex-column">
             {user?.role === "admin" && (
               <>
@@ -72,10 +75,9 @@ const Sidebar = () => {
                 <Link className="nav-link text-dark" to="/instructor/courses" onClick={() => setShow(false)}>
                   <FaBook className="me-2" /> Courses
                 </Link>
-                 <Link className="nav-link text-dark" to="/instructor/mycourses" onClick={() => setShow(false)}>
-                  <FaBook className="me-2" />  My Courses
+                <Link className="nav-link text-dark" to="/instructor/mycourses" onClick={() => setShow(false)}>
+                  <FaFolderOpen className="me-2" /> My Courses
                 </Link>
-                
               </>
             )}
 
@@ -96,6 +98,14 @@ const Sidebar = () => {
               </>
             )}
           </nav>
+
+          {/* Logout Button and Footer at Bottom */}
+          <div>
+            <Button variant="danger" className="w-100 my-2" onClick={() => dispatch(logout())}>
+              <FaSignOutAlt className="me-2" /> Logout
+            </Button>
+            <Footer /> {/* Footer Component */}
+          </div>
         </Offcanvas.Body>
       </Offcanvas>
     </>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect ,useRef} from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FaTrash, FaSave, FaPlus, FaEdit } from "react-icons/fa";
 import { Button, Form, Container, Row, Col, Card, Modal } from "react-bootstrap";
@@ -17,12 +17,21 @@ const VideoManagement = () => {
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
   const [editedFile, setEditedFile] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (chapter_id) {
       Courses_API.get(`/video/${chapter_id}`)
         .then((response) => setVideos(response.data))
-        .catch((error) => console.error("Error fetching videos:", error));
+        .catch((error) => {
+          // If we get a 404, it means no videos found for this chapter, which is okay
+          if (error.response && error.response.status === 404) {
+            console.log(`No videos found for chapter ${chapter_id}`);
+            setVideos([]);
+          } else {
+            console.error("Error fetching videos:", error);
+          }
+        });
     }
   }, [chapter_id]);
 
@@ -50,6 +59,9 @@ const VideoManagement = () => {
       setVideoTitle("");
       setVideoDescription("");
       setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     } catch (error) {
       console.error("Error adding video:", error);
       alert("Failed to upload video");
@@ -121,7 +133,7 @@ const VideoManagement = () => {
             <Form.Control as="textarea" rows={2} placeholder="Enter Video Description" value={videoDescription} onChange={(e) => setVideoDescription(e.target.value)} />
           </Form.Group>
           <Form.Group className="mb-2">
-            <Form.Control type="file" accept="video/*" onChange={(e) => setSelectedFile(e.target.files[0])} />
+            <Form.Control ref={fileInputRef} type="file" accept="video/*" onChange={(e) => setSelectedFile(e.target.files[0])} />
           </Form.Group>
           <Button variant="success" onClick={handleAddVideo}><FaPlus /> Add Video</Button>
         </Form>

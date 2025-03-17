@@ -3,8 +3,8 @@ const {addCategories,allCategories,updateCategory } = require("../controllers/ca
 const {addCourses,deleteCourse,updateCourse}=require("../controllers/coursesController");
 const {authenticateUser} =require("../middleware/authUserMiddleware");
 const upload = require("../config/multerConfig");
-const {uploadVideo,getVideosByChapter,editVideoDetails,deleteVideo}=require("../controllers/videoController");
-const {addChapter,fetchChapter,editChapter, deleteChapter}=require("../controllers/chapterController");
+const {uploadVideo,getVideosByChapter,editVideoDetails,deleteVideo, updateVideoOrder}=require("../controllers/videoController");
+const {addChapter,fetchChapter,editChapter, deleteChapter, updateChapterOrder}=require("../controllers/chapterController");
 const router = express.Router();
 
 router.post("/",authenticateUser,addCourses);
@@ -15,11 +15,13 @@ router.post("/category",authenticateUser, addCategories);
 router.get("/category",authenticateUser,allCategories);
 router.patch("/category/:category_id",authenticateUser, updateCategory);
 
+router.patch("/chapter/order",authenticateUser,updateChapterOrder);
 router.post("/chapter",authenticateUser,addChapter);
 router.get("/chapter/:course_id",authenticateUser,fetchChapter);
 router.patch("/chapter/:chapter_id",authenticateUser,editChapter);
 router.delete("/chapter/:chapter_id",authenticateUser,deleteChapter);
 
+router.patch("/video/order",authenticateUser,updateVideoOrder);
 router.post("/video",upload.single("video"),uploadVideo);
 router.get("/video/:chapter_id",getVideosByChapter);
 router.patch("/video/:video_id",upload.single("video"),authenticateUser,editVideoDetails);

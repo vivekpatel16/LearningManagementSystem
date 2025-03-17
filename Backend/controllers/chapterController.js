@@ -24,7 +24,7 @@ exports.addChapter=async(req,res)=>
         });
         await newChapter.save();
         res.status(200).json({message:"chapter added successfully",chapter:newChapter});
-
+        
     }
     catch(error)
     {
@@ -91,5 +91,32 @@ exports.deleteChapter=async(req,res)=>
     {
         console.log("server error while deleting chapter",error);
         res.status(500).json({message:"server error while deleting chapter"});
+    }
+};
+
+exports.updateChapterOrder=async(req,res)=>
+{
+    try
+    {
+        const {chapters}=req.body;
+        if(!chapters || !Array.isArray(chapters))
+        {
+            return res.status(400).json({message:"invalid chapter data"});
+        }
+        const updateOrder=chapters.map((chapter,index)=>
+        {
+            return Chapter.findByIdAndUpdate(
+                chapter.id,
+                {order:index+1},
+                {new:true}
+            )
+        })
+       await Promise.all(updateOrder);
+       return res.status(200).json({message:"chapter order updated successfully"});
+    }
+    catch(error)
+    {
+        console.log("server error while updating chapter order",error);
+        res.status(500).json({message:"server error while updating chapter order"});
     }
 }
