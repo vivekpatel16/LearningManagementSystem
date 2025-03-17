@@ -13,14 +13,15 @@ import InstructorCourses from "./pages/Instructor/CourseManagement";
 import MyCourses from "./pages/Instructor/MyCourses";
 import ChapterManagement from "./pages/Instructor/ChapterManagement";
 import VideoManagement from "./pages/Instructor/VideoManagement";
+import CourseDetail from "./pages/Instructor/CourseDetails";
 import Home from "./pages/Learner/Home";
 import MyLearning from "./pages/Learner/MyLearning";
 import Wishlist from "./pages/Learner/Wishlist";
 import Courses from "./pages/Learner/Courses";
 import Header from "./Components/Header";
-import Footer from "./Components/Footer";
 import Profile from "./Components/Profile";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { logout } from "./features/auth/authSlice";
 
 const PrivateRoute = ({ element, roles }) => {
   const { user } = useSelector((state) => state.auth);
@@ -33,12 +34,24 @@ function App() {
   const { user } = useSelector((state) => state.auth);
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
 
   useEffect(() => {
+    // Check if token exists
+    const token = localStorage.getItem("token");
+    if (!token && location.pathname !== "/" && 
+        location.pathname !== "/forgot-password" && 
+        location.pathname !== "/reset-password") {
+      // If no token and not on auth pages, logout and redirect to login
+      dispatch(logout());
+      navigate("/");
+      return;
+    }
+
     if (user) {
       const allowedRoutes = {
         admin: ["/admin/dashboard", "/admin/users", "/admin/courses", "/admin/reports", "/profile"],
-        instructor: ["/instructor/dashboard", "/instructor/courses","/instructor/mycourses","/instructor/courses/add-chapter","/instructor/courses/add-videos", "/profile"],
+        instructor: ["/instructor/dashboard", "/instructor/courses","/instructor/mycourses","/instructor/courses/add-chapter","/instructor/courses/add-videos", "/profile", "/instructor/mycourses/coursedetails"],
         user: ["/home", "/my-learning", "/wishlist", "/profile", "/courses"],
       };
 
@@ -48,7 +61,7 @@ function App() {
         else if (user.role === "user") navigate("/home");
       }
     }
-  }, [user, navigate, location.pathname]);
+  }, [user, navigate, location.pathname, dispatch]);
 
   return (
     <>
@@ -72,7 +85,8 @@ function App() {
         <Route path="/instructor/mycourses" element={<PrivateRoute element={<MyCourses />} roles={["instructor"]} />} />
         <Route path="/instructor/courses/add-chapter" element={<PrivateRoute element={<ChapterManagement />} roles={["instructor"]} />} />
         <Route path="/instructor/courses/add-videos" element={<PrivateRoute element={<VideoManagement />} roles={["instructor"]} />} />
-
+        <Route path="/instructor/mycourses/coursedetails" element={<PrivateRoute element={<CourseDetail />} roles={["instructor"]} />} />
+        
         {/* User (Learner) Routes */}
         <Route path="/home" element={<PrivateRoute element={<Home />} roles={["user"]} />} />
         <Route path="/my-learning" element={<PrivateRoute element={<MyLearning />} roles={["user"]} />} />
@@ -82,7 +96,6 @@ function App() {
         {/* Shared Profile Route */}
         <Route path="/profile" element={<PrivateRoute element={<Profile />} roles={["admin", "instructor", "user"]} />} />
       </Routes>
-      <Footer />
     </>
   );
 }
