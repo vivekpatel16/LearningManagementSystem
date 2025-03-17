@@ -41,7 +41,7 @@ const CourseList = () => {
   }, []);
 
   const handleEditCourse = (course) => {
-    navigate("/instructor/courses/add-chapter", { state: { course } });
+    navigate("/instructor/courses", { state: { course } });
   };
 
   const handleDeleteCourse = async (courseId) => {
@@ -105,6 +105,8 @@ const CourseList = () => {
                     e.target.onerror = null;
                     e.target.src = defaultImage;
                   }}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => navigate("/instructor/mycourses/coursedetails",{state : {course}})} 
                 />
                 <Card.Body>
                   <Card.Title>{course.title}</Card.Title>
