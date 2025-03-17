@@ -118,15 +118,15 @@ const Dashboard = () => {
             </Col>
 
             <Col md={4}>
-              <Card className="shadow p-4 ms-auto mt-3" style={{ width: "300px", height: "290px" }}>
+              <Card className="shadow p-4 ms-5 me-5 mt-3 " style={{ width: "auto", height: "auto" }} >
                 <h5>Quick Links</h5>
-                <Button variant="primary" size="md" className="w-100 mb-3 mt-4" href="/admin/courses">
+                <Button variant="primary" size="md" className="w-55 mb-3 mt-4" href="/Admin/Courses">
                   Manage Courses
                 </Button>
-                <Button variant="success" size="md" className="w-100 mb-3" href="/admin/users">
+                <Button variant="success" size="md" className="w-55 mb-3" href="/Admin/Users">
                   Manage Users
                 </Button>
-                <Button variant="danger" size="md" className="w-100 mb-3" href="/admin/reports">
+                <Button variant="danger" size="md" className="w-55 mb-3" href="/Admin/Reports">
                   View Reports
                 </Button>
               </Card>

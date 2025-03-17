@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Container, Table, Button, Modal, Form, Card, InputGroup, FormControl } from "react-bootstrap";
-import { FaUserEdit, FaTrash, FaPlus, FaSearch } from "react-icons/fa";
+import { FaUserEdit, FaTrash, FaPlus, FaSearch, FaEye, FaEyeSlash } from "react-icons/fa";
 import Admin_API from "../../Api/adminApi";
 
 const UserManagement = () => {
@@ -8,6 +8,7 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState("Add");
+  const [showPassword, setShowPassword] = useState(false);
 
   // Separate states for new users and existing users
   const [newUser, setNewUser] = useState({ user_name: "", email: "", password: "", role: "user" });
@@ -119,7 +120,7 @@ const UserManagement = () => {
                   <td>{user.email}</td>
                   <td>{user.role}</td>
                   <td>
-                    <Button variant="warning" size="sm" className="me-2" onClick={() => handleShowModal("Edit", user)}>
+                    <Button variant="secondary" size="sm" className="me-2" onClick={() => handleShowModal("Edit", user)}>
                       <FaUserEdit /> Edit
                     </Button>
                     <Button variant="danger" size="sm" onClick={() => handleDelete(user._id)}>
@@ -166,14 +167,40 @@ const UserManagement = () => {
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Password</Form.Label>
+              <div style={{ position: "relative" }}>
               <Form.Control
-                type="password"
-                name="password"
-                value={modalType === "Add" ? newUser.password : currentUser.password}
-                onChange={modalType === "Add" ? handleChangeNewUser : handleChangeCurrentUser}
-                required={modalType === "Add"}
-                autoComplete="new-password"
-              />
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={modalType === "Add" ? newUser.password : currentUser.password}
+                  onChange={modalType === "Add" ? handleChangeNewUser : handleChangeCurrentUser}
+                  required={modalType === "Add"}
+                  autoComplete="new-password"
+                />
+                <FaEye
+                  style={{
+                    position: "absolute",
+                    right: "10px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    cursor: "pointer",
+                    color: "#666",
+                  }}
+                  onClick={() => setShowPassword(!showPassword)}
+                  className={showPassword ? "d-none" : ""}
+                />
+                <FaEyeSlash
+                  style={{
+                    position: "absolute",
+                    right: "10px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    cursor: "pointer",
+                    color: "#666"
+                  }}
+                  onClick={() => setShowPassword(!showPassword)}
+                  className={showPassword ? "" : "d-none"}
+                />
+              </div>
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Role</Form.Label>
