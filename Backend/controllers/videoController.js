@@ -14,6 +14,7 @@ exports.uploadVideo = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No video uploaded" });
     }
+
     const { video_title, video_description, chapter_id } = req.body;
     const lastVideo = await video.findOne({ chapter_id }).sort({ order: -1 });  
     const newOrder = lastVideo ? lastVideo.order + 1 : 1;
