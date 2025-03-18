@@ -42,7 +42,6 @@ exports.addCourses = async (req, res) => {
 
 exports.fetchCourses = async (req, res) => {
   try {
-  
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
@@ -50,14 +49,15 @@ exports.fetchCourses = async (req, res) => {
     const allUser=await User.find({});
     const totalUser=allUser.filter((u)=>u.role==="user").length;
     const totalInstructor=allUser.filter((u)=>u.role==="instructor").length;
-    const allCourses=await Courses.countDocuments({});
+    const allCourses=await Courses.countDocuments({status:true});
+    
     let courses;
     let instructorCoursesCount = 0;
     if (req.user.role === "instructor") {
-      courses = await Courses.find({ created_by: req.user.id }).populate("created_by","user_name");
-      instructorCoursesCount = await Courses.countDocuments({ created_by: req.user.id });
+      courses = await Courses.find({ created_by: req.user.id ,status:true}).populate("created_by","user_name");
+      instructorCoursesCount = await Courses.countDocuments({ created_by: req.user.id ,status:true});
     } else {
-      courses = await Courses.find({}).populate("created_by","user_name");
+      courses = await Courses.find({status:true}).populate("created_by","user_name");
     }
     res.status(202).json({
       data:courses || [],
