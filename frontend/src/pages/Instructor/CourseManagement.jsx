@@ -95,8 +95,8 @@ const CourseManagement = ({ onUpdateCourses }) => {
           onUpdateCourses(response.data.data);
         }
         
-        // Redirect to ChapterManagement after saving the course
-        navigate("/instructor/courses/add-chapter", { state: { course: response.data.data } });
+        // Redirect to CourseDetails after saving the course
+        navigate("/instructor/mycourses/coursedetails", { state: { course: response.data.data } });
       } else {
         alert("Course ID not generated. Please try again.");
       }
