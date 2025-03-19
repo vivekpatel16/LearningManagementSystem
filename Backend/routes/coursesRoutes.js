@@ -5,6 +5,7 @@ const {authenticateUser} =require("../middleware/authUserMiddleware");
 const upload = require("../config/multerConfig");
 const {uploadVideo,getVideosByChapter,editVideoDetails,deleteVideo, updateVideoOrder}=require("../controllers/videoController");
 const {addChapter,fetchChapter,editChapter, deleteChapter, updateChapterOrder}=require("../controllers/chapterController");
+const {addRating,getRating}=require("../controllers/ratingController");
 const router = express.Router();
 
 router.post("/",authenticateUser,addCourses);
@@ -22,8 +23,14 @@ router.patch("/chapter/:chapter_id",authenticateUser,editChapter);
 router.delete("/chapter/:chapter_id",authenticateUser,deleteChapter);
 
 router.patch("/video/order",authenticateUser,updateVideoOrder);
-router.post("/video",upload.single("video"),uploadVideo);
-router.get("/video/:chapter_id",getVideosByChapter);
+router.post("/video",upload.single("video"),authenticateUser,uploadVideo);
+router.get("/video/:chapter_id",authenticateUser,getVideosByChapter);
 router.patch("/video/:video_id",upload.single("video"),authenticateUser,editVideoDetails);
 router.delete("/video/:video_id",authenticateUser,deleteVideo);
+
+router.post("/rating",authenticateUser,addRating);
+router.get("/rating/:course_id",authenticateUser,getRating);
+
+
+// router.patch("/rating/:rating_id",authenticateUser,updateRating);
 module.exports = router;

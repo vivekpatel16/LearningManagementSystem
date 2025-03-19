@@ -30,7 +30,8 @@ const coursesInfoSchema = new mongoose.Schema(
       type:Boolean,
       default:true,
       required:true
-    }
+    },
+    // rating: { type: Number, min: 1, max: 5, required: true }
   },
   { timestamps: true }
 );

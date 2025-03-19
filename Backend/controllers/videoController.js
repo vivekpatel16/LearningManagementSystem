@@ -2,14 +2,18 @@ const video = require("../models/videoModel");
 const fs = require("fs");
 const path = require("path");
 const ffmpeg = require("fluent-ffmpeg");
-// ffmpeg.setFfmpegPath("C:/ffmpeg/bin/ffmpeg.exe");
-// ffmpeg.setFfprobePath("C:/ffmpeg/bin/ffprobe.exe");
+const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+const ffprobePath = require('@ffprobe-installer/ffprobe').path;
+
+ffmpeg.setFfmpegPath(ffmpegPath);
+ffmpeg.setFfprobePath(ffprobePath);
 
 exports.uploadVideo = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No video uploaded" });
     }
+
     const { video_title, video_description, chapter_id } = req.body;
     const lastVideo = await video.findOne({ chapter_id }).sort({ order: -1 });  
     const newOrder = lastVideo ? lastVideo.order + 1 : 1;
@@ -87,6 +91,7 @@ exports.deleteVideo=async(req,res)=>
     }
 }
 
+
 exports.editVideoDetails = async (req, res) => {
     try {
       const { video_id } = req.params;
@@ -131,6 +136,7 @@ exports.editVideoDetails = async (req, res) => {
     }
   };
 
+  
   exports.updateVideoOrder=async(req,res)=>
     {
         try

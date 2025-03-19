@@ -11,6 +11,8 @@ import Reports from "./pages/Admin/Reports";
 import InstructorDashboard from "./pages/Instructor/Dashboard";
 import InstructorCourses from "./pages/Instructor/CourseManagement";
 import MyCourses from "./pages/Instructor/MyCourses";
+import ChapterManagement from "./pages/Instructor/ChapterManagement";
+import VideoManagement from "./pages/Instructor/VideoManagement";
 import CourseDetail from "./pages/Instructor/CourseDetails";
 import Home from "./pages/Learner/Home";
 import MyLearning from "./pages/Learner/MyLearning";
@@ -238,6 +240,8 @@ function App() {
         <Route path="/instructor/dashboard" element={<PrivateRoute element={<InstructorDashboard />} roles={["instructor"]} />} />
         <Route path="/instructor/courses" element={<PrivateRoute element={<InstructorCourses />} roles={["instructor"]} />} />
         <Route path="/instructor/mycourses" element={<PrivateRoute element={<MyCourses />} roles={["instructor"]} />} />
+        <Route path="/instructor/courses/add-chapter" element={<PrivateRoute element={<ChapterManagement />} roles={["instructor"]} />} />
+        <Route path="/instructor/courses/add-videos" element={<PrivateRoute element={<VideoManagement />} roles={["instructor"]} />} />
         <Route path="/instructor/mycourses/coursedetails" element={<PrivateRoute element={<CourseDetail />} roles={["instructor"]} />} />
         
         {/* User (Learner) Routes */}
