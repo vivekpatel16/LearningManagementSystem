@@ -385,8 +385,8 @@ const CourseDetail = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-    if(thumbnail.current)
-    { thumbnail.current.value="";    }
+    if(thumbnailInputRef.current)
+    { thumbnailInputref.current.value="";    }
 
   };
 
@@ -428,11 +428,6 @@ const CourseDetail = () => {
     }
 
     let response;
-      if (editingVideo) {
-        // Update existing video
-        response = await Courses_API.patch(`/video/${editingVideo.id}`, formData, {
-
-
       if (editingVideo) {
         // Update existing video
        response = await Courses_API.patch(`/video/${editingVideo.id}`, formData, {
