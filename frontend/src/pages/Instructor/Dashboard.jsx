@@ -5,33 +5,50 @@ import common_API from "../../Api/commonApi";
 
 const Dashboard = () => {
   const [showCourses, setShowCourses] = useState(false);
+  const [showEnrolledLearners, setShowEnrolledLearners] = useState(false);
   const [courses, setCourses] = useState([]);
+  const [enrolledLearners, setEnrolledLearners] = useState([]);
   const [totalEnrolled, setTotalEnrolled] = useState(0);
   const [instructorCoursesCount, setInstructorCoursesCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await common_API.get("/courses"); 
-        const result =response.data;
-        console.log(response);
-        if (response.status==200||response.status==202) {
+        const result = response.data;
+        
+        if (response.status === 200 || response.status === 202) {
           setCourses(result.data || []);
-          // setTotalEnrolled(result.totalUser || 0);
-          setInstructorCoursesCount(result.instructorCoursesCount || 0); 
+          setInstructorCoursesCount(result.instructorCoursesCount || 0);
         } else {
           console.error("Error fetching courses:", result.message);
         }
       } catch (error) {
         console.error("Error fetching data:", error);
+      }
+    };
+
+    const fetchEnrolledLearners = async () => {
+      try {
+        const response = await common_API.get("/enrolled-learners");
+        const result = response.data;
+
+        if (response.status === 200 || response.status === 202) {
+          setEnrolledLearners(result.data || []);
+          setTotalEnrolled(result.totalEnrolled || 0);
+        } else {
+          console.error("Error fetching learners:", result.message);
+        }
+      } catch (error) {
+        console.error("Error fetching enrolled learners:", error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
+    fetchEnrolledLearners();
   }, []);
 
   return (
@@ -44,8 +61,9 @@ const Dashboard = () => {
         </div>
       ) : (
         <Row>
+          {/* Enrolled Learners Card */}
           <Col md={6}>
-            <Card className="shadow-sm p-3 mb-4">
+            <Card className="shadow-sm p-3 mb-4 cursor-pointer" onClick={() => setShowEnrolledLearners(true)}>
               <Card.Body className="d-flex align-items-center">
                 <FaChalkboardTeacher size={40} className="me-3 text-success" />
                 <div>
@@ -56,7 +74,7 @@ const Dashboard = () => {
             </Card>
           </Col>
 
-      
+          {/* Courses Added Card */}
           <Col md={6}>
             <Card className="shadow-sm p-3 mb-4 cursor-pointer" onClick={() => setShowCourses(true)}> 
               <Card.Body className="d-flex align-items-center">
@@ -71,7 +89,7 @@ const Dashboard = () => {
         </Row>
       )}
 
-      
+      {/* Modal for Courses Added */}
       <Modal show={showCourses} onHide={() => setShowCourses(false)} size="lg">
         <Modal.Header closeButton>
           <Modal.Title>Courses Added</Modal.Title>
@@ -100,6 +118,43 @@ const Dashboard = () => {
                 <tr>
                   <td colSpan="4" className="text-center text-danger">
                     No courses added yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </Table>
+        </Modal.Body>
+      </Modal>
+
+      {/* Modal for Enrolled Learners */}
+      <Modal show={showEnrolledLearners} onHide={() => setShowEnrolledLearners(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Enrolled Learners</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Table striped bordered hover responsive>
+            <thead>
+              <tr>
+                <th>Index</th>
+                <th>Learner Name</th>
+                <th>Email</th>
+                <th>Course Enrolled</th>
+              </tr>
+            </thead>
+            <tbody>
+              {enrolledLearners.length > 0 ? (
+                enrolledLearners.map((learner, index) => (
+                  <tr key={index}>
+                    <td>{index + 1}</td>
+                    <td>{learner.name}</td>
+                    <td>{learner.email}</td>
+                    <td>{learner.courseTitle}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="text-center text-danger">
+                    No learners enrolled yet.
                   </td>
                 </tr>
               )}
