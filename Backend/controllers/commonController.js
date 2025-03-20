@@ -35,6 +35,7 @@ exports.updateProfile = async(req,res)=>{
       return res.status(404).json({ message: "User not found" });
     }
 
+    
     if (user_name) user.user_name = user_name;
     if (user_image) user.user_image = user_image;
 
@@ -163,4 +164,37 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
-
+exports.verifyAuth = async (req, res) => {
+  try {
+    // req.user is populated by the authenticateUser middleware
+    const userId = req.user.id;
+    const user = await UserInfo.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+    
+    // Return user info without password
+    const userInfo = {
+      id: user._id,
+      user_name: user.user_name,
+      email: user.email,
+      role: user.role,
+      user_image: user.user_image
+    };
+    
+    return res.status(200).json({
+      success: true,
+      user: userInfo
+    });
+  } catch (error) {
+    console.error("Auth verification error:", error);
+    return res.status(500).json({ 
+      success: false, 
+      message: "Server error during authentication verification" 
+    });
+  }
+};
