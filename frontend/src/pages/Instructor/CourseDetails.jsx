@@ -27,11 +27,15 @@ const CourseDetail = () => {
   const [selectedChapter, setSelectedChapter] = useState(null);
   const [videoTitle, setVideoTitle] = useState("");
   const [videoDescription, setVideoDescription] = useState("");
+  const [videoThumbnail,setVideoThumbnail]=useState(null);
+  const [editingThumbnail,setEditingThumbnail]=useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [editingVideo, setEditingVideo] = useState(null);
   const [videoLoading, setVideoLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef(null);
+  const thumbnailInputRed=useRef(null);
+
 
   // Fetch chapters and videos when component mounts or when navigating back to this page
   useEffect(() => {
@@ -77,7 +81,8 @@ const CourseDetail = () => {
               type: "video",
               description: video.video_description,
               url: video.video_url,
-              order: video.order
+              order: video.order,
+              thumbnail:video.video_thumbnail
             }));
             
             return {
@@ -85,7 +90,8 @@ const CourseDetail = () => {
               title: chapter.chapter_title,
               description: chapter.chapter_description,
               order: chapter.order,
-              items: formattedVideos.sort((a, b) => a.order - b.order)
+              items: formattedVideos.sort((a, b) => a.order - b.order),
+              
             };
           } catch (error) {
             console.error(`Error processing chapter ${chapter._id}:`, error);
@@ -352,6 +358,7 @@ const CourseDetail = () => {
     setEditingVideo(null);
     setVideoTitle("");
     setVideoDescription("");
+    setVideoThumbnail(null);
     setSelectedFile(null);
     setUploadProgress(0);
     setShowVideoModal(true);
@@ -360,6 +367,8 @@ const CourseDetail = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+    if (thumbnailInputRef.current) thumbnailInputRef.current.value = "";
+
   };
 
   const openEditVideoModal = (chapter, video) => {
@@ -367,6 +376,7 @@ const CourseDetail = () => {
     setEditingVideo(video);
     setVideoTitle(video.title);
     setVideoDescription(video.description);
+    setEditingThumbnail(video.thumbnail);
     setSelectedFile(null);
     setUploadProgress(0);
     setShowVideoModal(true);
@@ -375,6 +385,9 @@ const CourseDetail = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+    if(thumbnail.current)
+    { thumbnail.current.value="";    }
+
   };
 
   const handleVideoSubmit = async () => {
@@ -388,20 +401,41 @@ const CourseDetail = () => {
       return;
     }
 
+
+    if(!editingThumbnail && !selectedFile)
+    {
+      alert("Please select a video Thumbnail");
+      return;
+    }
+
+
     try {
       setVideoLoading(true);
       setError(null);
       const formData = new FormData();
       formData.append("video_title", videoTitle);
       formData.append("video_description", videoDescription);
+      formData.append("video_thumbnail",videoThumbnail);
       
+
       if (selectedFile) {
         formData.append("video", selectedFile);
       }
 
+      
+      if (videoThumbnail && videoThumbnail instanceof File) {  
+        formData.append("video_thumbnail", videoThumbnail); // Upload the file, not URL
+    }
+
+    let response;
       if (editingVideo) {
         // Update existing video
-        const response = await Courses_API.patch(`/video/${editingVideo.id}`, formData, {
+        response = await Courses_API.patch(`/video/${editingVideo.id}`, formData, {
+
+
+      if (editingVideo) {
+        // Update existing video
+       response = await Courses_API.patch(`/video/${editingVideo.id}`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -417,7 +451,7 @@ const CourseDetail = () => {
         // Add new video
         formData.append("chapter_id", selectedChapter.id);
         
-        const response = await Courses_API.post("/video", formData, {
+         response = await Courses_API.post("/video", formData, {
           headers: { "Content-Type": "multipart/form-data" },
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -425,10 +459,15 @@ const CourseDetail = () => {
           }
         });
         
-        console.log("Video created successfully:", response.data);
+
+        if(response.data)
+        {
+          console.log("Video created successfully:", response.data);
         
         // Refresh data from server to ensure we have the latest
         await fetchChaptersAndVideos();
+        }
+
         
         // Make sure the chapter is open to see the new video
         if (!openChapters.includes(selectedChapter.id)) {
@@ -440,6 +479,7 @@ const CourseDetail = () => {
       setVideoTitle("");
       setVideoDescription("");
       setSelectedFile(null);
+      setEditingThumbnail(null);
       setEditingVideo(null);
       setSelectedChapter(null);
       setShowVideoModal(false);
@@ -449,6 +489,10 @@ const CourseDetail = () => {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+
+      if(thumbnailInputRed.current)thumbnailInputRed.current.value="";
+      // await fetchChaptersAndVideos
+
     } catch (error) {
       console.error("Error saving video:", error);
       
@@ -742,93 +786,123 @@ const CourseDetail = () => {
       </Modal>
 
       {/* Video Modal */}
-      <Modal show={showVideoModal} onHide={() => !videoLoading && setShowVideoModal(false)} centered backdrop="static">
-        <Modal.Header closeButton={!videoLoading}>
-          <Modal.Title>{editingVideo ? "Edit Video" : "Add New Video"}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Video Title</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="Enter Video Title"
-                value={videoTitle}
-                onChange={(e) => setVideoTitle(e.target.value)}
-                disabled={videoLoading}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Video Description</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                placeholder="Enter Video Description"
-                value={videoDescription}
-                onChange={(e) => setVideoDescription(e.target.value)}
-                disabled={videoLoading}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>{editingVideo ? "Replace Video (optional)" : "Upload Video"}</Form.Label>
-              <Form.Control
-                ref={fileInputRef}
-                type="file"
-                accept="video/*"
-                onChange={(e) => setSelectedFile(e.target.files[0])}
-                disabled={videoLoading}
-              />
-              {editingVideo && (
-                <Form.Text className="text-muted">
-                  Leave empty to keep the current video.
-                </Form.Text>
-              )}
-            </Form.Group>
-            
-            {videoLoading && (
-              <div className="mt-3">
-                <div className="d-flex justify-content-between mb-1">
-                  <span>Uploading...</span>
-                  <span>{uploadProgress}%</span>
-                </div>
-                <div className="progress">
-                  <div 
-                    className="progress-bar progress-bar-striped progress-bar-animated" 
-                    role="progressbar" 
-                    style={{ width: `${uploadProgress}%` }} 
-                    aria-valuenow={uploadProgress} 
-                    aria-valuemin="0" 
-                    aria-valuemax="100"
-                  ></div>
-                </div>
-    </div>
-            )}
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button 
-            variant="secondary" 
-            onClick={() => setShowVideoModal(false)}
-            disabled={videoLoading}
-          >
-            Cancel
-          </Button>
-          <Button 
-            variant="primary" 
-            onClick={handleVideoSubmit}
-            disabled={videoLoading}
-          >
-            {videoLoading ? (
-              <>
-                <FaSpinner className="me-2 fa-spin" />
-                {editingVideo ? "Updating..." : "Adding..."}
-              </>
-            ) : (
-              editingVideo ? "Update Video" : "Add Video"
-            )}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+
+<Modal show={showVideoModal} onHide={() => !videoLoading && setShowVideoModal(false)} centered backdrop="static">
+  <Modal.Header closeButton={!videoLoading}>
+    <Modal.Title>{editingVideo ? "Edit Video" : "Add New Video"}</Modal.Title>
+  </Modal.Header>
+  <Modal.Body>
+    <Form>
+      <Form.Group className="mb-3">
+        <Form.Label>Video Title</Form.Label>
+        <Form.Control
+          type="text"
+          placeholder="Enter Video Title"
+          value={videoTitle}
+          onChange={(e) => setVideoTitle(e.target.value)}
+          disabled={videoLoading}
+        />
+      </Form.Group>
+      <Form.Group className="mb-3">
+        <Form.Label>Video Description</Form.Label>
+        <Form.Control
+          as="textarea"
+          rows={3}
+          placeholder="Enter Video Description"
+          value={videoDescription}
+          onChange={(e) => setVideoDescription(e.target.value)}
+          disabled={videoLoading}
+        />
+      </Form.Group>
+      
+      {/* Video Upload */}
+      <Form.Group className="mb-3">
+        <Form.Label>{editingVideo ? "Replace Video (optional)" : "Upload Video"}</Form.Label>
+        <Form.Control
+          ref={fileInputRef}
+          type="file"
+          accept="video/*"
+          onChange={(e) => setSelectedFile(e.target.files[0])}
+          disabled={videoLoading}
+        />
+        {editingVideo && (
+          <Form.Text className="text-muted">
+            Leave empty to keep the current video.
+          </Form.Text>
+        )}
+      </Form.Group>
+
+      {/* Video Thumbnail Upload */}
+      <Form.Group className="mb-3">
+        <Form.Label>{editingThumbnail ? "Replace Thumbnail (optional)" : "Upload Thumbnail"}</Form.Label>
+        <Form.Control
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onloadend = () => setVideoThumbnail(reader.result);
+              reader.readAsDataURL(file);
+            }
+          }
+          }
+          disabled={videoLoading}
+        />
+        {videoThumbnail && (
+          <div className="mt-2">
+            <img src={videoThumbnail} alt="Video Thumbnail" style={{ width: "100%", maxHeight: "200px", objectFit: "contain" }} />
+          </div>
+        )}
+         {!videoThumbnail && editingVideo?.thumbnail_url && (
+          <div className="mt-2">
+            <img src={editingVideo.thumbnail_url} alt="Current Thumbnail" style={{ width: "100%", maxHeight: "200px", objectFit: "contain" }} />
+          </div>
+        )}
+        <Form.Text className="text-muted">
+        {editingThumbnail ? "Leave empty to keep the current thumbnail." : "Upload a new thumbnail for the video."}
+        </Form.Text>
+      </Form.Group>
+
+      {/* Upload Progress */}
+      {videoLoading && (
+        <div className="mt-3">
+          <div className="d-flex justify-content-between mb-1">
+            <span>Uploading...</span>
+            <span>{uploadProgress}%</span>
+          </div>
+          <div className="progress">
+            <div 
+              className="progress-bar progress-bar-striped progress-bar-animated" 
+              role="progressbar" 
+              style={{ width: `${uploadProgress}%` }} 
+              aria-valuenow={uploadProgress} 
+              aria-valuemin="0" 
+              aria-valuemax="100"
+            ></div>
+          </div>
+        </div>
+      )}
+    </Form>
+  </Modal.Body>
+  <Modal.Footer>
+    <Button variant="secondary" onClick={() => setShowVideoModal(false)} disabled={videoLoading}>
+      Cancel
+    </Button>
+    <Button variant="primary" onClick={handleVideoSubmit} disabled={videoLoading}>
+      {videoLoading ? (
+        <>
+          <FaSpinner className="me-2 fa-spin" />
+          {editingVideo ? "Updating..." : "Adding..."}
+        </>
+      ) : (
+        editingVideo ? "Update Video" : "Add Video"
+      )}
+    </Button>
+  </Modal.Footer>
+</Modal>
+
+
     </Container>
   );
 };
