@@ -35,7 +35,6 @@ exports.updateProfile = async(req,res)=>{
       return res.status(404).json({ message: "User not found" });
     }
 
-    
     if (user_name) user.user_name = user_name;
     if (user_image) user.user_image = user_image;
 
@@ -163,3 +162,5 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ message: "Failed to reset password", error: error.message });
   }
 };
+
+

@@ -29,8 +29,8 @@ router.patch("/video/:video_id",upload.single("video"),authenticateUser,editVide
 router.delete("/video/:video_id",authenticateUser,deleteVideo);
 
 router.post("/rating",authenticateUser,addRating);
-router.get("/rating/:course_id",authenticateUser,getRating);
+router.get("/rating/:course_id",getRating);
 
 
-// router.patch("/rating/:rating_id",authenticateUser,updateRating);
+
 module.exports = router;

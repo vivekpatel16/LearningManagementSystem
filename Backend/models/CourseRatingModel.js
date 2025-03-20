@@ -3,12 +3,12 @@ const mongoose = require('mongoose');
 const CourseRatingSchema = new mongoose.Schema({
   user_id: { 
     type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User',
+    ref: 'UserInfo',
      required: true 
     },
   course_id: {
      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Course', 
+      ref: 'CoursesInfo', 
       required: true 
     },
   rating: {

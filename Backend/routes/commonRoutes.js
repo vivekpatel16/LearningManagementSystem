@@ -12,4 +12,5 @@ router.patch("/delete-image",authenticateUser,deleteUserImage);
 router.post("/check-email",checkEmailAndSendOTP);
 router.post("/verify-otp", verifyOTP);
 router.post("/reset-password", resetPassword);
+
 module.exports = router;

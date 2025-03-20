@@ -1,4 +1,5 @@
 const video = require("../models/videoModel");
+const videoUser=require("../models/videoUserModel");
 const fs = require("fs");
 const path = require("path");
 const ffmpeg = require("fluent-ffmpeg");
@@ -14,7 +15,7 @@ exports.uploadVideo = async (req, res) => {
       return res.status(400).json({ message: "No video uploaded" });
     }
 
-    const { video_title, video_description, chapter_id } = req.body;
+    const { video_title, video_description, chapter_id,video_thumbnail } = req.body;
     const lastVideo = await video.findOne({ chapter_id }).sort({ order: -1 });  
     const newOrder = lastVideo ? lastVideo.order + 1 : 1;
 
@@ -31,7 +32,8 @@ exports.uploadVideo = async (req, res) => {
       video_description: video_description,
       chapter_id: chapter_id,
       order:newOrder,
-      video_length:videoLength
+      video_length:videoLength,
+      video_thumbnail
     });
 
     await newVideo.save();
@@ -45,8 +47,8 @@ exports.uploadVideo = async (req, res) => {
 };
 
 exports.getVideosByChapter = async (req, res) => {
+  const { chapter_id } = req.params;
   try {
-    const { chapter_id } = req.params;
     const videos=await video.find({chapter_id}).sort({order:1});
 
    return res.status(200).json(videos);
@@ -58,8 +60,8 @@ exports.getVideosByChapter = async (req, res) => {
 
 exports.deleteVideo=async(req,res)=>
 {
+  const {video_id}=req.params;
     try{
-        const {video_id}=req.params;
         if(!video_id)
         {
             return res.status(400).json({message:"video is required"});
@@ -93,8 +95,8 @@ exports.deleteVideo=async(req,res)=>
 
 
 exports.editVideoDetails = async (req, res) => {
+  const { video_id } = req.params;
     try {
-      const { video_id } = req.params;
      
       if (!video_id) {
         return res.status(400).json({ message: "Video ID is required" });
@@ -110,7 +112,7 @@ exports.editVideoDetails = async (req, res) => {
       
       if (req.body.video_title) updateFields.video_title = req.body.video_title;
       if (req.body.video_description) updateFields.video_description = req.body.video_description;
-      
+      if(req.body.video_thumbnail) updateFields.video_thumbnail=req.body.video_thumbnail;
      
       if (req.file) {
        
@@ -139,9 +141,9 @@ exports.editVideoDetails = async (req, res) => {
   
   exports.updateVideoOrder=async(req,res)=>
     {
+      const {videos}=req.body;
         try
         {
-            const {videos}=req.body;
             if(!videos || !Array.isArray(videos))
             {
                 return res.status(400).json({message:"invalid video data"});
@@ -170,3 +172,39 @@ exports.editVideoDetails = async (req, res) => {
         }
     
     };
+
+
+exports.getVideoProgress=async(req,res)=>
+{
+  const { userId, courseId, videoId } = req.params;
+  try{
+    const progress=await videoUser.findOne({user_id:userId,course_id:courseId,video_id:videoId});
+    res.status(200).json(progress||{current_time:0,completed:false});
+  }
+  catch(error)
+  {
+    console.log("server error while fetching video progress");
+    res.status(500).json({message:"server error while fetching video progress"});
+  }
+};
+
+exports.updateVideoProgress=async(req,res)=>
+{
+  const {user_id,course_id,video_id,current_time,completed}=req.body;
+  try
+  {
+      const progress=await videoUser.findByIdAndUpdate(
+        {user_id:user_id,
+          course_id:course_id,
+          video_id:video_id,
+         },{current_time,completed},
+         {new:true,upsert:true}
+      )
+      res.status(200).json({message:"video progreee is updated",progress});
+  }
+  catch(error)
+  {
+    console.log("server error while updating video progress");
+    res.status(500).json({message:"server error while updating video progess"});
+  }
+}

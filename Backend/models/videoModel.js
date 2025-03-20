@@ -10,28 +10,28 @@ const videoSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    video_description:{
+    video_description: {
       type: String,
     },
     chapter_id: {
-      type:  mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
       ref: "Chapter",
     },
-    order:
-    {
-      type:Number,
+    order: {
+      type: Number,
     },
-    video_length:{
-      type:Number,
-    }
+    video_length: {
+      type: Number,
+    },
+    video_thumbnail: {
+      type: String, 
+      // required: false, // Thumbnail is optional
+    },
   },
-  { timestamps: true } 
+  { timestamps: true }
 );
-
 
 const Video = mongoose.models.VideoInfo || mongoose.model("VideoInfo", videoSchema);
 
 module.exports = Video;
-// module.exports=mongoose.model("VideoInfo", videoSchema);
-
