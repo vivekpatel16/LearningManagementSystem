@@ -344,6 +344,7 @@ const CourseList = () => {
         </Alert>
       ) : (
         <Row className="g-4">
+        <Row className="g-4">
           {courses.map((course) => (
             <Col key={course._id} md={4} className="d-flex">
               <Card className="shadow-sm w-100">
@@ -386,8 +387,10 @@ const CourseList = () => {
                   <div className="d-flex justify-content-between">
                     <Button variant="primary" onClick={() => handleEditCourse(course)}>
                       <FaEdit className="me-1" /> Edit
+                      <FaEdit className="me-1" /> Edit
                     </Button>
                     <Button variant="danger" onClick={() => handleDeleteCourse(course._id)}>
+                      <FaTrash className="me-1" /> Delete
                       <FaTrash className="me-1" /> Delete
                     </Button>
                   </div>

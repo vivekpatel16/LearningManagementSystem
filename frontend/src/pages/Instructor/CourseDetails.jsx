@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { FaVideo, FaFileAlt, FaGripLines, FaEdit, FaTrash, FaPlus, FaSpinner, FaArrowLeft } from "react-icons/fa";
+import { Accordion, Button, ListGroup, Card, Spinner, Modal, Form, Alert, Container, Row, Col } from "react-bootstrap";
 import { FaVideo, FaFileAlt, FaGripLines, FaEdit, FaTrash, FaPlus, FaSpinner, FaArrowLeft } from "react-icons/fa";
 import { Accordion, Button, ListGroup, Card, Spinner, Modal, Form, Alert, Container, Row, Col } from "react-bootstrap";
 import Courses_API from "../../Api/courseApi";
@@ -11,6 +14,7 @@ const CourseDetail = () => {
   const [course, setCourse] = useState(location.state?.course || {});
   const [chapters, setChapters] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [openChapters, setOpenChapters] = useState([]);
   const [error, setError] = useState(null);
@@ -49,9 +53,12 @@ const CourseDetail = () => {
     try {
       setLoading(true);
       setError(null);
+      setError(null);
       // Fetch chapters
       const chaptersResponse = await Courses_API.get(`/chapter/${course._id}`);
       const chaptersData = chaptersResponse.data;
+
+      console.log("Fetched chapters:", chaptersData);
 
       console.log("Fetched chapters:", chaptersData);
 
@@ -111,9 +118,21 @@ const CourseDetail = () => {
       console.error("Error fetching chapters:", error);
       setError("Failed to load chapters. Please try refreshing the page.");
     } finally {
+      setError("Failed to load chapters. Please try refreshing the page.");
+    } finally {
       setLoading(false);
       setRefreshing(false);
+      setRefreshing(false);
     }
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchChaptersAndVideos();
+  };
+
+  const handleBackToMyCourses = () => {
+    navigate("/instructor/mycourses");
   };
 
   const handleRefresh = () => {
@@ -571,8 +590,42 @@ const CourseDetail = () => {
               ) : (
                 "+ Add Chapter"
               )}
+    <Container className="mt-4">
+      <Row className="mb-4">
+        <Col xs={12}>
+          <Button 
+            variant="outline-secondary" 
+            className="mb-3"
+            onClick={handleBackToMyCourses}
+            style={{ width: 'fit-content' }}
+          >
+            <FaArrowLeft className="me-2" /> Back to My Courses
+          </Button>
+          <div className="d-flex justify-content-between align-items-center">
+            <h2>{course.title || "Course Details"}</h2>
+            <Button 
+              variant="primary" 
+              onClick={openAddChapterModal}
+              disabled={chapterLoading}
+            >
+              {chapterLoading ? (
+                <>
+                  <FaSpinner className="me-2 fa-spin" />
+                  Processing...
+                </>
+              ) : (
+                "+ Add Chapter"
+              )}
         </Button>
       </div>
+        </Col>
+      </Row>
+
+      {error && (
+        <Alert variant="danger" className="mb-3" dismissible onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
         </Col>
       </Row>
 
@@ -598,9 +651,30 @@ const CourseDetail = () => {
                         <Accordion.Item eventKey={chapter.id}>
                           <Accordion.Header onClick={() => toggleChapter(chapter.id)}>
                             <div className="d-flex align-items-center w-100">
+                            <div className="d-flex align-items-center w-100">
                               <span {...provided.dragHandleProps} className="me-2">
                                 <FaGripLines className="text-muted" />
                               </span>
+                              <span className="flex-grow-1">{chapter.title || "Untitled Chapter"}</span>
+                              <div className="d-flex me-4" onClick={(e) => e.stopPropagation()}>
+                                <Button 
+                                  variant="outline-secondary" 
+                                  size="sm" 
+                                  className="me-2"
+                                  onClick={() => openEditChapterModal(chapter)}
+                                  disabled={chapterLoading}
+                                >
+                                  <FaEdit />
+                                </Button>
+                                <Button 
+                                  variant="outline-danger" 
+                                  size="sm"
+                                  onClick={() => handleDeleteChapter(chapter.id)}
+                                  disabled={chapterLoading}
+                                >
+                                  <FaTrash />
+                                </Button>
+                              </div>
                               <span className="flex-grow-1">{chapter.title || "Untitled Chapter"}</span>
                               <div className="d-flex me-4" onClick={(e) => e.stopPropagation()}>
                                 <Button 
@@ -639,6 +713,17 @@ const CourseDetail = () => {
                                 ) : (
                                   "+ Add Video"
                                 )}
+                                onClick={() => openAddVideoModal(chapter)}
+                                disabled={videoLoading}
+                              >
+                                {videoLoading ? (
+                                  <>
+                                    <FaSpinner className="me-1 fa-spin" />
+                                    Processing...
+                                  </>
+                                ) : (
+                                  "+ Add Video"
+                                )}
                               </Button>
                             </div>
                             <Droppable droppableId={chapter.id} type="items">
@@ -664,6 +749,25 @@ const CourseDetail = () => {
                                                 <FaFileAlt className="me-2 text-warning" />
                                               )}
                                               {item.title}
+                                            </div>
+                                            <div>
+                                              <Button 
+                                                variant="outline-secondary" 
+                                                size="sm" 
+                                                className="me-2"
+                                                onClick={() => openEditVideoModal(chapter, item)}
+                                                disabled={videoLoading}
+                                              >
+                                                <FaEdit />
+                                              </Button>
+                                              <Button 
+                                                variant="outline-danger" 
+                                                size="sm"
+                                                onClick={() => handleDeleteVideo(chapter.id, item.id)}
+                                                disabled={videoLoading}
+                                              >
+                                                <FaTrash />
+                                              </Button>
                                             </div>
                                             <div>
                                               <Button 
