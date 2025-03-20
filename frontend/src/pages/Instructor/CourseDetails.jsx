@@ -15,7 +15,6 @@ const CourseDetail = () => {
   const [chapters, setChapters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [openChapters, setOpenChapters] = useState([]);
   const [error, setError] = useState(null);
   
