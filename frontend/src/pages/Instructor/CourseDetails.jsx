@@ -36,6 +36,7 @@ const CourseDetail = () => {
   const fileInputRef = useRef(null);
   const thumbnailInputRed=useRef(null);
 
+
   // Fetch chapters and videos when component mounts or when navigating back to this page
   useEffect(() => {
     if (course && course._id) {
@@ -384,9 +385,9 @@ const CourseDetail = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-
     if(thumbnail.current)
     { thumbnail.current.value="";    }
+
   };
 
   const handleVideoSubmit = async () => {
@@ -400,11 +401,13 @@ const CourseDetail = () => {
       return;
     }
 
+
     if(!editingThumbnail && !selectedFile)
     {
       alert("Please select a video Thumbnail");
       return;
     }
+
 
     try {
       setVideoLoading(true);
@@ -414,10 +417,11 @@ const CourseDetail = () => {
       formData.append("video_description", videoDescription);
       formData.append("video_thumbnail",videoThumbnail);
       
-      
+
       if (selectedFile) {
         formData.append("video", selectedFile);
       }
+
       
       if (videoThumbnail && videoThumbnail instanceof File) {  
         formData.append("video_thumbnail", videoThumbnail); // Upload the file, not URL
@@ -427,6 +431,11 @@ const CourseDetail = () => {
       if (editingVideo) {
         // Update existing video
         response = await Courses_API.patch(`/video/${editingVideo.id}`, formData, {
+
+
+      if (editingVideo) {
+        // Update existing video
+       response = await Courses_API.patch(`/video/${editingVideo.id}`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -450,6 +459,7 @@ const CourseDetail = () => {
           }
         });
         
+
         if(response.data)
         {
           console.log("Video created successfully:", response.data);
@@ -457,6 +467,7 @@ const CourseDetail = () => {
         // Refresh data from server to ensure we have the latest
         await fetchChaptersAndVideos();
         }
+
         
         // Make sure the chapter is open to see the new video
         if (!openChapters.includes(selectedChapter.id)) {
@@ -478,8 +489,10 @@ const CourseDetail = () => {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+
       if(thumbnailInputRed.current)thumbnailInputRed.current.value="";
       // await fetchChaptersAndVideos
+
     } catch (error) {
       console.error("Error saving video:", error);
       
@@ -773,6 +786,7 @@ const CourseDetail = () => {
       </Modal>
 
       {/* Video Modal */}
+
 <Modal show={showVideoModal} onHide={() => !videoLoading && setShowVideoModal(false)} centered backdrop="static">
   <Modal.Header closeButton={!videoLoading}>
     <Modal.Title>{editingVideo ? "Edit Video" : "Add New Video"}</Modal.Title>
@@ -887,6 +901,7 @@ const CourseDetail = () => {
     </Button>
   </Modal.Footer>
 </Modal>
+
 
     </Container>
   );
