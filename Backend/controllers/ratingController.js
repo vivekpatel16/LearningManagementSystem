@@ -25,7 +25,7 @@ exports.addRating=async(req,res)=>
 }
 
 
-exports.getRating=async(req,res)=>
+exports.getAverageRating=async(req,res)=>
 {
     try{
         const {course_id}=req.params;
@@ -45,6 +45,28 @@ exports.getRating=async(req,res)=>
     catch(error)
     {
         console.log("server error while getting ratings",error);
+        res.status(500).json({message:"server error while getting ratings"});
+    }
+};
+
+exports.getRating=async(req,res)=>
+{
+    try{
+        const {user_id}=req.params;
+        if(!user_id)
+        {
+            res.status(404).json({message:"user not found"});
+        }
+        const ratings=await Rating.find({user_id}).populate("course_id");
+        if (!ratings.length) {
+            return res.status(404).json({ message: "No ratings found for this user" });
+        }
+
+        res.status(200).json({ message: "Ratings fetched successfully", ratings });
+    }
+    catch(error)
+    {
+        console.log("server error while getting ratings");
         res.status(500).json({message:"server error while getting ratings"});
     }
 }

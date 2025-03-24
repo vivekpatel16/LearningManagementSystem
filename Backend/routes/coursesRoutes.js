@@ -5,10 +5,11 @@ const {authenticateUser} =require("../middleware/authUserMiddleware");
 const upload = require("../config/multerConfig");
 const {uploadVideo,getVideosByChapter,editVideoDetails,deleteVideo, updateVideoOrder}=require("../controllers/videoController");
 const {addChapter,fetchChapter,editChapter, deleteChapter, updateChapterOrder}=require("../controllers/chapterController");
-const {addRating,getRating}=require("../controllers/ratingController");
+const {addRating,getAverageRating,getRating}=require("../controllers/ratingController");
 const router = express.Router();
 
 router.post("/",authenticateUser,addCourses);
+// router.get("/:course_id",authenticateUser,fetchCourse);
 router.patch("/:course_id",authenticateUser,updateCourse);
 router.delete("/:course_id",authenticateUser,deleteCourse); 
 
@@ -29,7 +30,8 @@ router.patch("/video/:video_id",upload.single("video"),authenticateUser,editVide
 router.delete("/video/:video_id",authenticateUser,deleteVideo);
 
 router.post("/rating",authenticateUser,addRating);
-router.get("/rating/:course_id",getRating);
+router.get("/rating/:course_id",getAverageRating);
+router.get("/rating/:user_id",getRating);
 
 
 
