@@ -386,7 +386,7 @@ const CourseDetail = () => {
       fileInputRef.current.value = "";
     }
     if(thumbnailInputRef.current)
-    { thumbnailInputref.current.value="";    }
+    { thumbnailInputRef.current.value="";    }
 
   };
 
@@ -401,13 +401,11 @@ const CourseDetail = () => {
       return;
     }
 
-
-    if(!editingThumbnail && !selectedFile)
-    {
-      alert("Please select a video Thumbnail");
+    // Add validation for thumbnail only when adding a new video (not when editing)
+    if (!editingVideo && !videoThumbnail) {
+      alert("Please select a video thumbnail. This is required when adding a new video.");
       return;
     }
-
 
     try {
       setVideoLoading(true);

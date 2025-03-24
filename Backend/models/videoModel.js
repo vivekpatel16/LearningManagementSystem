@@ -26,7 +26,7 @@ const videoSchema = new mongoose.Schema(
     },
     video_thumbnail: {
       type: String, 
-      // required: false, // Thumbnail is optional
+      required: true,
     },
   },
   { timestamps: true }
