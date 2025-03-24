@@ -426,7 +426,6 @@ const CourseDetail = () => {
     }
 
     let response;
-      
       if (editingVideo) {
         // Update existing video
        response = await Courses_API.patch(`/video/${editingVideo.id}`, formData, {
