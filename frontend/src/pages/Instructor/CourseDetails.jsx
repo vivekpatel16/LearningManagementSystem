@@ -385,8 +385,8 @@ const CourseDetail = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-    if(thumbnail.current)
-    { thumbnail.current.value="";    }
+    if(thumbnailInputRef.current)
+    { thumbnailInputRef.current.value="";    }
 
   };
 
@@ -401,13 +401,11 @@ const CourseDetail = () => {
       return;
     }
 
-
-    if(!editingThumbnail && !selectedFile)
-    {
-      alert("Please select a video Thumbnail");
+    // Add validation for thumbnail only when adding a new video (not when editing)
+    if (!editingVideo && !videoThumbnail) {
+      alert("Please select a video thumbnail. This is required when adding a new video.");
       return;
     }
-
 
     try {
       setVideoLoading(true);
@@ -428,11 +426,7 @@ const CourseDetail = () => {
     }
 
     let response;
-      if (editingVideo) {
-        // Update existing video
-        response = await Courses_API.patch(`/video/${editingVideo.id}`, formData, {
-
-
+      
       if (editingVideo) {
         // Update existing video
        response = await Courses_API.patch(`/video/${editingVideo.id}`, formData, {

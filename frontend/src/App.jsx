@@ -16,6 +16,8 @@ import Home from "./pages/Learner/Home";
 import MyLearning from "./pages/Learner/MyLearning";
 import Wishlist from "./pages/Learner/Wishlist";
 import Courses from "./pages/Learner/Courses";
+import CourseShow from "./pages/Learner/CourseShow";
+import VideoPlayer from "./Components/VideoPlayer";
 import Header from "./Components/Header";
 import Profile from "./Components/Profile";
 import { useSelector, useDispatch } from "react-redux";
@@ -245,9 +247,11 @@ function App() {
         <Route path="/my-learning" element={<PrivateRoute element={<MyLearning />} roles={["user"]} />} />
         <Route path="/wishlist" element={<PrivateRoute element={<Wishlist />} roles={["user"]} />} />
         <Route path="/courses" element={<PrivateRoute element={<Courses />} roles={["user"]} />} />
+        <Route path="/courses/courseshow/:courseId" element={<PrivateRoute element={<CourseShow />} roles={["user"]} />} />
 
         {/* Shared Profile Route */}
         <Route path="/profile" element={<PrivateRoute element={<Profile />} roles={["admin", "instructor", "user"]} />} />
+        <Route path="/video-player" element={<PrivateRoute element={<VideoPlayer />} roles={["user", "instructor"]} />} />
       </Routes>
     </>
   );
