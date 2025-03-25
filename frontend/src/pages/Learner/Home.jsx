@@ -161,7 +161,7 @@ const Home = () => {
                               variant="outline-primary"
                               size="sm"
                               className="w-100"
-                              onClick={() => navigate(`/courses/${course.id}`)}
+                              onClick={() => navigate(`/courses/courseShow/${course.id}`)}
                             >
                               <FaChalkboardTeacher /> View Course
                             </Button>
