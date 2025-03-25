@@ -6,6 +6,7 @@ const commonRoutes=require("./routes/commonRoutes");
 const adminRoutes=require("./routes/adminRoutes");
 const coursesRoutes = require("./routes/coursesRoutes");
 const wishlistRoutes=require("./routes/wishlistRoutes");
+
 dotenv.config();
 connectDb();
 

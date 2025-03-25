@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import common_API from "../../Api/commonApi";
 import Courses_API from "../../Api/courseApi";
+import Wishlist_API from "../../Api/wishlistApi";
 
 const defaultImage = "https://www.futuretechinfovision.co.uk/wp-content/uploads/2022/06/IT-Courses.jpg";
 
@@ -31,7 +32,7 @@ const Courses = () => {
   const [selectedDurations, setSelectedDurations] = useState([]);
   const [selectedRatings, setSelectedRatings] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
-  const [likedCourses, setLikedCourses] = useState({});
+  const [wishlistedCourses, setWishlistedCourses] = useState({});
   const [courses, setCourses] = useState([]);
   const [categories, setCategories] = useState([]);
   const [courseChapters, setCourseChapters] = useState({});
@@ -88,6 +89,9 @@ const Courses = () => {
             }
           }
           setCourseChapters(chaptersData);
+          
+          // Fetch user's wishlist after courses are loaded
+          fetchWishlist();
         } else {
           console.warn("API response format not as expected:", coursesResponse.data);
           setError("No courses found or invalid data format");
@@ -112,11 +116,56 @@ const Courses = () => {
     fetchData();
   }, []);
 
-  const toggleLike = (courseId) => {
-    setLikedCourses((prev) => ({
-      ...prev,
-      [courseId]: !prev[courseId],
-    }));
+  // Fetch user's wishlist
+  const fetchWishlist = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user"));
+      if (!user || !user._id) return;
+
+      const response = await Wishlist_API.get(`/${user._id}`);
+      
+      if (response.data && response.data.wishlist) {
+        // Create a map of course IDs that are in the wishlist
+        const wishlistMap = {};
+        if (Array.isArray(response.data.wishlist.course_id)) {
+          response.data.wishlist.course_id.forEach(course => {
+            wishlistMap[course._id] = true;
+          });
+        } else if (response.data.wishlist.course_id) {
+          wishlistMap[response.data.wishlist.course_id._id] = true;
+        }
+        setWishlistedCourses(wishlistMap);
+      }
+    } catch (err) {
+      console.error("Error fetching wishlist:", err);
+    }
+  };
+
+  // Toggle wishlist status
+  const toggleWishlist = async (courseId, event) => {
+    if (event) event.stopPropagation(); // Prevent card click event
+    
+    try {
+      const user = JSON.parse(localStorage.getItem("user"));
+      if (!user || !user._id) {
+        alert("Please login to add courses to wishlist");
+        return;
+      }
+
+      await Wishlist_API.post("/add", {
+        user_id: user._id,
+        course_id: courseId
+      });
+
+      // Update local state
+      setWishlistedCourses(prev => ({
+        ...prev,
+        [courseId]: !prev[courseId]
+      }));
+    } catch (err) {
+      console.error("Error toggling wishlist:", err);
+      alert("Failed to update wishlist");
+    }
   };
 
   const toggleSelection = (value, setter, selectedList) => {
@@ -345,11 +394,20 @@ const Courses = () => {
                       style={{ height: "200px", objectFit: "cover" }}
                     />
                     <Card.Body className="d-flex flex-column">
-                      <div className="d-flex justify-content-between align-items-center">
-                        <Card.Title>{course.title}</Card.Title>
-                        <Button variant="link" className="p-0" onClick={() => toggleLike(course._id)}>
-                          {likedCourses[course._id] ? <FaHeart color="red" /> : <FaRegHeart color="gray" />}
-                        </Button>
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <h5 className="mb-0">{course.title}</h5>
+                        {wishlistedCourses[course._id] ? (
+                          <FaHeart
+                            className="text-danger"
+                            style={{ cursor: "pointer" }}
+                            onClick={(e) => toggleWishlist(course._id, e)}
+                          />
+                        ) : (
+                          <FaRegHeart
+                            style={{ cursor: "pointer" }}
+                            onClick={(e) => toggleWishlist(course._id, e)}
+                          />
+                        )}
                       </div>
                       <div 
                         className="description-wrapper" 
@@ -399,7 +457,7 @@ const Courses = () => {
               ))
             ) : (
               <Col className="text-center">
-                <h5>No courses match your filters.</h5>
+                <div className="alert alert-warning">No courses match your filters. Try adjusting your criteria.</div>
               </Col>
             )}
           </Row>
