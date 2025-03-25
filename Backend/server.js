@@ -5,7 +5,7 @@ const connectDb = require('./config/db');
 const commonRoutes=require("./routes/commonRoutes");
 const adminRoutes=require("./routes/adminRoutes");
 const coursesRoutes = require("./routes/coursesRoutes");
-
+const wishlistRoutes=require("./routes/wishlistRoutes");
 dotenv.config();
 connectDb();
 
@@ -19,6 +19,7 @@ app.use("/uploads",express.static("uploads"));
 app.use("/api/users",commonRoutes);
 app.use("/api/admin",adminRoutes);
 app.use("/api/courses",coursesRoutes);
+app.use("/api/wishlist",wishlistRoutes);
 
 const PORT =5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
