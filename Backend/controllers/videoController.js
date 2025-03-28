@@ -113,18 +113,53 @@ exports.editVideoDetails = async (req, res) => {
       if (req.body.video_title) updateFields.video_title = req.body.video_title;
       if (req.body.video_description) updateFields.video_description = req.body.video_description;
       if(req.body.video_thumbnail) updateFields.video_thumbnail=req.body.video_thumbnail;
+      
+      
+      if(req.body.video_length && !req.file) {
+        updateFields.video_length = req.body.video_length;
+      }
      
       if (req.file) {
-       
+        
         const oldVideoPath = path.join(__dirname, "..", foundVideo.video_url);
         if (fs.existsSync(oldVideoPath)) {
           fs.unlinkSync(oldVideoPath);
         }
   
-       
         updateFields.video_url = `/uploads/videos/${req.file.filename}`;
+        
+       
+        const videoPath = path.join(__dirname, "..", "uploads/videos", req.file.filename);
+        
+      
+        return ffmpeg.ffprobe(videoPath, async (err, metadata) => {
+          if (err) {
+            console.error("Error extracting video length:", err);
+            return res.status(500).json({ message: "Error processing video" });
+          }
+          
+          
+          const videoLength = Math.floor(metadata.format.duration);
+          console.log("Updated video length:", videoLength);
+          
+          
+          updateFields.video_length = videoLength;
+          
+         
+          const updatedVideo = await video.findByIdAndUpdate(
+            video_id,
+            { $set: updateFields },
+            { new: true }
+          );
+          
+          return res.status(200).json({ 
+            message: "Video details updated successfully", 
+            updatedVideo 
+          });
+        });
       }
-  
+      
+     
       const updatedVideo = await video.findByIdAndUpdate(
         video_id,
         { $set: updateFields },
@@ -160,8 +195,8 @@ exports.editVideoDetails = async (req, res) => {
                 videoItem.id,
                 {$set:updateData},
                 {new:true}
-            );
-        });
+              );
+            });
            await Promise.all(updateOrder);
            return res.status(200).json({message:"video order updated successfully"});
         }
@@ -174,37 +209,207 @@ exports.editVideoDetails = async (req, res) => {
     };
 
 
-exports.getVideoProgress=async(req,res)=>
-{
-  const { userId, courseId, videoId } = req.params;
-  try{
-    const progress=await videoUser.findOne({user_id:userId,course_id:courseId,video_id:videoId});
-    res.status(200).json(progress||{current_time:0,completed:false});
+exports.getVideoProgress = async (req, res) => {
+  const { user_id, course_id, video_id } = req.params;
+  try {
+    if (!user_id || !course_id || !video_id) {
+      return res.status(400).json({message: "Missing required parameters: user_id, course_id, or video_id"});
+    }
+
+    // Ensure the requesting user can only access their own progress
+    if (user_id !== req.user.id) {
+      return res.status(403).json({message: "Unauthorized to access this user's progress"});
+    }
+
+    // Find the progress record
+    const progress = await videoUser.findOne({
+      user_id: user_id,
+      course_id: course_id,
+      video_id: video_id
+    });
+
+    let result = {
+      success: true,
+      data: {
+        current_time: 0,
+        completed: false,
+        progress_percent: 0
+      }
+    };
+
+    if (progress) {
+      // Use the stored progress_percent if available, otherwise calculate it
+      let progressPercent = progress.progress_percent || 0;
+      
+      // If we don't have a stored progress_percent but have a current_time, try to calculate it
+      if (progressPercent === 0 && progress.current_time > 0) {
+        // Get the video details to calculate progress percentage
+        const videoDetails = await video.findById(video_id);
+        
+        if (videoDetails && videoDetails.video_length > 0) {
+          progressPercent = Math.min(
+            ((progress.current_time || 0) / videoDetails.video_length) * 100,
+            100
+          );
+          
+          // Update the progress record with the calculated percentage for future use
+          await videoUser.findByIdAndUpdate(
+            progress._id,
+            { progress_percent: progressPercent },
+            { new: true }
+          );
+        } else {
+          // If we don't have video details but have saved time, set progress to a positive value
+          progressPercent = 1; // Just indicate some progress has been made
+        }
+      }
+
+      result.data = {
+        current_time: progress.current_time || 0,
+        completed: progress.completed || false,
+        progress_percent: progressPercent,
+        updatedAt: progress.updatedAt
+      };
+    }
+
+    // Calculate the overall course progress to include in the response
+    const courseProgress = await updateCourseProgress(user_id, course_id);
+    result.data.course_progress = courseProgress;
+
+    console.log(`Retrieved progress for video ${video_id}: ${JSON.stringify(result.data)}`);
+    res.status(200).json(result);
   }
-  catch(error)
-  {
-    console.log("server error while fetching video progress");
-    res.status(500).json({message:"server error while fetching video progress"});
+  catch (error) {
+    console.error("Server error while fetching video progress:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching video progress",
+      error: error.message
+    });
   }
 };
 
-exports.updateVideoProgress=async(req,res)=>
-{
-  const {user_id,course_id,video_id,current_time,completed}=req.body;
-  try
-  {
-      const progress=await videoUser.findByIdAndUpdate(
-        {user_id:user_id,
-          course_id:course_id,
-          video_id:video_id,
-         },{current_time,completed},
-         {new:true,upsert:true}
-      )
-      res.status(200).json({message:"video progreee is updated",progress});
+exports.updateVideoProgress = async (req, res) => {
+  const { user_id, course_id, video_id, current_time, completed, progress_percent } = req.body;
+  try {
+    // Validate required parameters
+    if (!user_id || !course_id || !video_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields: user_id, course_id, video_id"
+      });
+    }
+
+    // Ensure the requesting user can only update their own progress
+    if (user_id !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized to update this user's progress"
+      });
+    }
+
+    console.log("Updating video progress:", {
+      user_id,
+      course_id,
+      video_id,
+      current_time,
+      progress_percent,
+      completed
+    });
+    
+    // Ensure current_time is a number
+    const safeCurrentTime = typeof current_time === 'number' ? current_time : parseFloat(current_time) || 0;
+    
+    // Ensure progress_percent is a number
+    const safeProgressPercent = typeof progress_percent === 'number' ? progress_percent : parseFloat(progress_percent) || 0;
+    
+    // Make sure completed is properly set based on progress
+    const isCompleted = completed || safeProgressPercent >= 95;
+    
+    // Update or create the progress record
+    const progress = await videoUser.findOneAndUpdate(
+      { 
+        user_id: user_id,
+        course_id: course_id,
+        video_id: video_id
+      },
+      { 
+        current_time: safeCurrentTime,
+        progress_percent: safeProgressPercent,
+        completed: isCompleted
+      },
+      {
+        new: true,
+        upsert: true
+      }
+    );
+
+    // Calculate and update course progress
+    const courseProgressPercent = await updateCourseProgress(user_id, course_id);
+    
+    res.status(200).json({
+      success: true,
+      message: "Video progress updated",
+      data: {
+        ...progress.toObject(),
+        course_progress: courseProgressPercent
+      }
+    });
   }
-  catch(error)
-  {
-    console.log("server error while updating video progress");
-    res.status(500).json({message:"server error while updating video progess"});
+  catch (error) {
+    console.error("Server error while updating video progress:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating video progress",
+      error: error.message
+    });
   }
-}
+};
+
+// Helper function to update overall course progress
+const updateCourseProgress = async (user_id, course_id) => {
+  try {
+    // Find all videos for this course by first getting chapters, then videos
+    const chapters = await require('../models/chapterModel').find({ course_id });
+    const chapterIds = chapters.map(chapter => chapter._id);
+    
+    // Get all videos from these chapters
+    const allVideos = await video.find({ chapter_id: { $in: chapterIds } });
+    
+    if (allVideos.length === 0) {
+      return 0; // No videos, no progress to calculate
+    }
+    
+    // Find all video progress records for this user and course
+    const videoProgresses = await videoUser.find({
+      user_id,
+      course_id
+    });
+    
+    const totalVideos = allVideos.length;
+    let completedCount = 0;
+    let totalPartialProgress = 0;
+    
+    // Count completed videos and add up partial progress
+    videoProgresses.forEach(progress => {
+      if (progress.completed) {
+        completedCount++;
+      } else if (progress.progress_percent > 0) {
+        // Add weighted partial progress (each video counts as 1 when 100% complete)
+        totalPartialProgress += progress.progress_percent / 100;
+      }
+    });
+    
+    // Calculate overall progress as completed videos plus partial progress, divided by total videos
+    const progressPercent = totalVideos > 0 
+      ? Math.min(100, Math.round(((completedCount + totalPartialProgress) / totalVideos) * 100))
+      : 0;
+    
+    console.log(`Course progress for user ${user_id}, course ${course_id}: ${progressPercent}%`);
+    
+    return progressPercent;
+  } catch (error) {
+    console.error("Error updating course progress:", error);
+    return 0;
+  }
+};

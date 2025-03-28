@@ -13,9 +13,9 @@ connectDb();
 const app = express();
 
 app.use(cors({ credentials: true }));
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json({ limit: "200mb" }));
-app.use(express.urlencoded({ limit: "200mb", extended: true }));
+// Increase payload size limits for large video files
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ limit: '500mb', extended: true }));
 app.use("/uploads",express.static("uploads"));
 app.use("/api/users",commonRoutes);
 app.use("/api/admin",adminRoutes);

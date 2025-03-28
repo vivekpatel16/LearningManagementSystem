@@ -1,15 +1,15 @@
 const express = require("express");
 const {addCategories,allCategories,updateCategory } = require("../controllers/categoryController");
-const {addCourses,deleteCourse,updateCourse}=require("../controllers/coursesController");
+const {addCourses,deleteCourse,updateCourse, enrollCourse, checkEnrollment, getEnrolledCourses}=require("../controllers/coursesController");
 const {authenticateUser} =require("../middleware/authUserMiddleware");
-const upload = require("../config/multerConfig");
-const {uploadVideo,getVideosByChapter,editVideoDetails,deleteVideo, updateVideoOrder}=require("../controllers/videoController");
+const { upload, handleMulterError } = require("../config/multerConfig");
+const {uploadVideo,getVideosByChapter,editVideoDetails,deleteVideo, updateVideoOrder, getVideoProgress, updateVideoProgress}=require("../controllers/videoController");
 const {addChapter,fetchChapter,editChapter, deleteChapter, updateChapterOrder}=require("../controllers/chapterController");
-const {addRating,getAverageRating,getRating}=require("../controllers/ratingController");
+const {addRating,getRating,updateRating}=require("../controllers/ratingController");
+const {addComment, getComment, deleteComment, editComment} = require("../controllers/commentController");
 const router = express.Router();
 
 router.post("/",authenticateUser,addCourses);
-// router.get("/:course_id",authenticateUser,fetchCourse);
 router.patch("/:course_id",authenticateUser,updateCourse);
 router.delete("/:course_id",authenticateUser,deleteCourse); 
 
@@ -24,15 +24,26 @@ router.patch("/chapter/:chapter_id",authenticateUser,editChapter);
 router.delete("/chapter/:chapter_id",authenticateUser,deleteChapter);
 
 router.patch("/video/order",authenticateUser,updateVideoOrder);
-router.post("/video",upload.single("video"),authenticateUser,uploadVideo);
+router.post("/video", authenticateUser, upload.single("video"), handleMulterError, uploadVideo);
 router.get("/video/:chapter_id",authenticateUser,getVideosByChapter);
-router.patch("/video/:video_id",upload.single("video"),authenticateUser,editVideoDetails);
+router.patch("/video/:video_id", authenticateUser, upload.single("video"), handleMulterError, editVideoDetails);
 router.delete("/video/:video_id",authenticateUser,deleteVideo);
 
+router.get("/video/progress/:user_id/:course_id/:video_id", authenticateUser, getVideoProgress);
+router.post("/video/progress", authenticateUser, updateVideoProgress);
+
 router.post("/rating",authenticateUser,addRating);
-router.get("/rating/:course_id",getAverageRating);
 router.get("/rating/:user_id",getRating);
+router.patch("/rating/:course_id",authenticateUser,updateRating);
 
 
+router.post("/comment", authenticateUser, addComment);
+router.get("/comment/:video_id", authenticateUser, getComment);
+router.patch("/comment/:comment_id", authenticateUser, editComment);
+router.delete("/comment/:comment_id", authenticateUser, deleteComment);
+
+router.post("/:course_id/enroll", authenticateUser, enrollCourse);
+router.get("/enrollment/:course_id", authenticateUser, checkEnrollment);
+router.get("/enrolled", authenticateUser, getEnrolledCourses);
 
 module.exports = router;
