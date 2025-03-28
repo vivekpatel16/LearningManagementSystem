@@ -21,6 +21,10 @@ const videoUserSchema = new mongoose.Schema(
       type: Number, 
       default: 0,
     },
+    progress_percent: {
+      type: Number,
+      default: 0,
+    },
     completed: {
       type: Boolean,
       default: false,
@@ -32,3 +36,5 @@ const videoUserSchema = new mongoose.Schema(
 
 
 module.exports = mongoose.model("VideoUser", videoUserSchema);
+
+
