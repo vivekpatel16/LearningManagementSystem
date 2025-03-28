@@ -90,7 +90,7 @@ const Sidebar = () => {
                   <FaBook className="me-2" /> Courses
                 </Link>
                 <Link className="nav-link text-dark" to="/my-learning" onClick={() => setShow(false)}>
-                  <FaBook className="me-2" /> My Learning
+                  <FaFolderOpen className="me-2" /> My Learning
                 </Link>
                 <Link className="nav-link text-dark" to="/wishlist" onClick={() => setShow(false)}>
                   <FaHeart className="me-2" /> Wishlist

@@ -1,71 +1,174 @@
-import React from "react";
-import { Container, Row, Col, Card, Button, ProgressBar } from "react-bootstrap";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
-import { FaPlayCircle } from "react-icons/fa";
-
-
-const courses = [
-  {
-    id: 1,
-    title: "React for Beginners",
-    instructor: "John Doe",
-    lessons: 24,
-    progress: 60,
-    image: "https://a.storyblok.com/f/172362/1920x1080/a5e68043d9/react-logo-with-react-for-beginners-text.jpg",
-  },
-  {
-    id: 2,
-    title: "Mastering JavaScript",
-    instructor: "Jane Smith",
-    lessons: 30,
-    progress: 80,
-    image: "https://i.pinimg.com/originals/6c/1e/b8/6c1eb80bed8a03e90 learning90a04333f1ca68c.jpg",
-  },
-];
+import React, { useEffect, useState } from "react";
+import { Container, Row, Col, Card, ProgressBar, Button } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
+import Header from "../../Components/Header";
+import Courses_API from "../../Api/courseApi";
 
 const MyLearning = () => {
-  const navigate = useNavigate(); // Initialize navigation function
+    const [enrolledCourses, setEnrolledCourses] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const navigate = useNavigate();
 
-  const handleContinueLearning = () => {
-    navigate("/courses/courseshow"); // Navigate to /courses/courseshow
-  };
+    useEffect(() => {
+        const fetchEnrolledCourses = async () => {
+            try {
+                setLoading(true);
+                setError(null);
 
-  return (
-    <Container className="mt-4">
-      <h2 className="mb-4 text-center fw-bold" style={{ color: "#000000" }}>My Learning</h2>
-      <Row>
-        {courses.map((course) => (
-          <Col md={6} lg={4} key={course.id}>
-            <Card className="mb-4 shadow">
-              <Card.Img
-                variant="top"
-                src={course.image}
-                alt={course.title}
-                style={{ height: "180px", objectFit: "cover" }}
-              />
-              <Card.Body>
-                <Card.Title>{course.title}</Card.Title>
-                <Card.Text>
-                  Instructor: <strong>{course.instructor}</strong>
-                  <br />
-                  Lessons: {course.lessons}
-                </Card.Text>
-                <ProgressBar now={course.progress} label={`${course.progress}%`} className="mb-2" />
-                <Button
-                  variant="success"
-                  className="w-100 d-flex justify-content-center align-items-center gap-2"
-                  onClick={handleContinueLearning}
-                >
-                  <FaPlayCircle /> Continue Learning
-                </Button>
+                // Check if user is logged in
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    setError("Please log in to view your enrolled courses");
+                    setLoading(false);
+                    return;
+                }
 
-              </Card.Body>
-            </Card>
-          </Col>
-        ))}
-      </Row>
-    </Container>
-  );
+                // Check if token is valid
+                try {
+                    const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+                    if (!tokenPayload.id) {
+                        setError("Invalid token. Please log in again.");
+                        localStorage.removeItem('token');
+                        setLoading(false);
+                        return;
+                    }
+                } catch (tokenError) {
+                    console.error("Token validation error:", tokenError);
+                    setError("Invalid token. Please log in again.");
+                    localStorage.removeItem('token');
+                    setLoading(false);
+                    return;
+                }
+
+                // Fetch enrolled courses directly
+                console.log("Fetching enrolled courses...");
+                const response = await Courses_API.get("/enrolled");
+                console.log("Enrolled courses response:", response.data);
+
+                if (response.data && response.data.success) {
+                    setEnrolledCourses(response.data.data);
+                } else {
+                    setError(response.data?.message || "Failed to fetch enrolled courses");
+                }
+
+            } catch (error) {
+                console.error("Error fetching enrolled courses:", error);
+                console.error("Error details:", error.response?.data);
+                
+                if (error.response?.status === 401) {
+                    setError("Your session has expired. Please log in again.");
+                    localStorage.removeItem('token');
+                    navigate('/login');
+                } else if (error.response?.status === 500) {
+                    setError(error.response?.data?.message || "Server error. Please try again later.");
+                } else {
+                    setError("Failed to fetch enrolled courses. Please try again later.");
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchEnrolledCourses();
+    }, [navigate]);
+
+    
+    const handleContinueLearning = (course) => {
+        // Navigate to course show page
+        navigate(`/courses/courseShow/${course._id}`);
+    };
+
+    if (loading) {
+        return (
+            <div>
+                <Header />
+                <Container className="mt-5">
+                    <div className="text-center">
+                        <div className="spinner-border text-primary" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </Container>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div>
+                <Header />
+                <Container className="mt-5">
+                    <div className="alert alert-danger" role="alert">
+                        {error}
+                        {error.includes("log in") && (
+                            <div className="mt-3">
+                                <Button variant="primary" onClick={() => navigate('/login')}>
+                                    Go to Login
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                </Container>
+            </div>
+        );
+    }
+
+    return (
+        <div>
+            <Header />
+            <Container className="mt-5">
+                <h2 className="mb-4">My Learning</h2>
+                {enrolledCourses.length === 0 ? (
+                    <div className="text-center">
+                        <p>You haven't enrolled in any courses yet.</p>
+                        <Button variant="primary" onClick={() => navigate("/courses")}>
+                            Browse Courses
+                        </Button>
+                    </div>
+                ) : (
+                    <Row xs={1} md={2} lg={3} className="g-4">
+                        {enrolledCourses.map((course) => (
+                            <Col key={course._id}>
+                                <Card className="h-100 shadow-sm">
+                                    <Card.Img
+                                        variant="top"
+                                        src={course.thumbnail}
+                                        alt={course.title}
+                                        style={{ height: '200px', objectFit: 'cover' }}
+                                    />
+                                    <Card.Body className="d-flex flex-column">
+                                        <Card.Title>{course.title}</Card.Title>
+                                        <Card.Text className="text-muted mb-2">
+                                            {course.created_by?.user_name || 'Unknown Instructor'}
+                                        </Card.Text>
+                                        <div className="mt-auto">
+                                            <div className="d-flex justify-content-between align-items-center mb-2">
+                                                <small>{course.progress}% complete</small>
+                                                <small>{course.completedVideos}/{course.totalVideos} videos</small>
+                                            </div>
+                                            <ProgressBar
+                                                now={course.progress}
+                                                variant={course.progress === 100 ? "success" : "primary"}
+                                                className="mb-3"
+                                            />
+                                            <Button
+                                                variant="primary"
+                                                onClick={() => handleContinueLearning(course)}
+                                                className="w-100"
+                                            >
+                                                Continue Learning
+                                            </Button>
+                                        </div>
+                                    </Card.Body>
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
+                )}
+            </Container>
+        </div>
+    );
 };
 
 export default MyLearning;

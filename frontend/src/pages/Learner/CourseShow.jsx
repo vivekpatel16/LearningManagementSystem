@@ -1,20 +1,27 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Container, Row, Col, Card, Button, ListGroup, Alert, Spinner } from "react-bootstrap";
+import { Container, Row, Col, Card, Button, ListGroup, Alert, Spinner, Modal } from "react-bootstrap";
 import { CameraVideo, FileEarmarkText, ChevronDown, ChevronUp } from "react-bootstrap-icons";
 import { motion } from "framer-motion";
 import common_API from "../../Api/commonApi";
 import Courses_API from "../../Api/courseApi";
+import axios from "axios";
+import { toast } from "react-hot-toast";
 
 const CourseShow = () => {
     const { courseId } = useParams();
     const [course, setCourse] = useState(null);
     const [categories, setCategories] = useState([]);
     const [chapters, setChapters] = useState([]);
-    const [enrolled, setEnrolled] = useState(false);
+    const [isEnrolled, setIsEnrolled] = useState(false);
     const [openChapters, setOpenChapters] = useState({});
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [averageRating, setAverageRating] = useState(0);
+    const [totalRatings, setTotalRatings] = useState(0);
+    const [isCheckingEnrollment, setIsCheckingEnrollment] = useState(true);
+    const [showEnrollModal, setShowEnrollModal] = useState(false);
+    const [selectedVideo, setSelectedVideo] = useState(null);
     const navigate = useNavigate();
 
     // Fetch course details, categories, and chapters
@@ -57,6 +64,20 @@ const CourseShow = () => {
                             );
                             setChapters(chaptersWithVideos);
                         }
+
+                        // Fetch course rating using common_API
+                        try {
+                            const ratingResponse = await common_API.get(`/rating/${courseId}`);
+                            if (ratingResponse.status === 200) {
+                                setAverageRating(ratingResponse.data.averageRating || 0);
+                                setTotalRatings(ratingResponse.data.ratings?.length || 0);
+                            }
+                        } catch (ratingError) {
+                            console.log("No ratings for this course yet:", ratingError.message);
+                            // Set default values instead of letting the error propagate
+                            setAverageRating(0);
+                            setTotalRatings(0);
+                        }
                     } else {
                         setError("Course not found");
                     }
@@ -79,6 +100,39 @@ const CourseShow = () => {
 
         fetchData();
     }, [courseId]);
+
+    // Add useEffect to check enrollment status
+    useEffect(() => {
+        const checkEnrollmentStatus = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    setIsCheckingEnrollment(false);
+                    return;
+                }
+
+                const response = await axios.get(
+                    `http://localhost:5000/api/courses/enrollment/${course._id}`,
+                    {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }
+                );
+
+                if (response.status === 200) {
+                    setIsEnrolled(true);
+                }
+            } catch (error) {
+                console.error('Error checking enrollment:', error);
+                setIsEnrolled(false);
+            } finally {
+                setIsCheckingEnrollment(false);
+            }
+        };
+
+        if (course?._id) {
+            checkEnrollmentStatus();
+        }
+    }, [course?._id]);
 
     // Format total duration into hours and minutes
     const formatTotalDuration = () => {
@@ -110,8 +164,46 @@ const CourseShow = () => {
     };
 
     // Enroll Now Handler
-    const handleEnroll = () => {
-        setEnrolled(true);
+    const handleEnroll = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                toast.error('Please login to enroll in the course');
+                return;
+            }
+
+            const response = await axios.post(
+                `http://localhost:5000/api/courses/${course._id}/enroll`,
+                {},
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+
+            if (response.status === 201) {
+                setIsEnrolled(true);
+                toast.success('Successfully enrolled in the course!');
+                
+                // Navigate to the first video
+                if (chapters && chapters.length > 0 && chapters[0].videos && chapters[0].videos.length > 0) {
+                    const firstVideo = chapters[0].videos[0];
+                    navigate("/video-player", {
+                        state: { 
+                            videoData: firstVideo,
+                            courseData: course,
+                            currentChapterIndex: 0
+                        }
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error enrolling in course:', error);
+            if (error.response?.status === 400) {
+                toast.error(error.response.data.message);
+            } else {
+                toast.error('Failed to enroll in course. Please try again.');
+            }
+        }
     };
 
     // Toggle Accordion Items
@@ -129,10 +221,142 @@ const CourseShow = () => {
         ));
     };
 
-    const handleVideoClick = (video) => {
-        navigate("/video-player", {
-            state: { videoData: video }
-        });
+    // Update handleVideoClick function
+    const handleVideoClick = (video, chapterIndex) => {
+        if (!isEnrolled) {
+            setSelectedVideo({ video, chapterIndex });
+            setShowEnrollModal(true);
+            return;
+        }
+
+        // Check if the video has any saved progress
+        const fetchAndNavigate = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    // If no token, just navigate without progress info
+                    navigateToVideo(video, chapterIndex);
+                    return;
+                }
+
+                const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+                const userId = tokenPayload.id;
+
+                // First get overall course progress
+                let courseProgressData = null;
+                try {
+                    const coursesResponse = await axios.get(
+                        'http://localhost:5000/api/courses/enrolled',
+                        {
+                            headers: { Authorization: `Bearer ${token}` }
+                        }
+                    );
+                    
+                    if (coursesResponse.data && coursesResponse.data.success) {
+                        const thisCourse = coursesResponse.data.data.find(
+                            c => c._id === course._id
+                        );
+                        
+                        if (thisCourse && typeof thisCourse.progress === 'number') {
+                            courseProgressData = thisCourse.progress;
+                        }
+                    }
+                } catch (courseErr) {
+                    console.error("Error fetching course progress:", courseErr);
+                }
+
+                // Try to fetch progress for this video
+                const progressResponse = await axios.get(
+                    `http://localhost:5000/api/courses/video/progress/${userId}/${course._id}/${video._id}`,
+                    {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }
+                );
+
+                if (progressResponse.data && progressResponse.data.success) {
+                    console.log("Found progress for video:", progressResponse.data.data);
+                    
+                    // Add the course progress to the video progress data
+                    const enhancedProgressData = {
+                        ...progressResponse.data.data,
+                        course_progress: courseProgressData
+                    };
+                    
+                    // Navigate with the progress data
+                    navigateToVideo(video, chapterIndex, enhancedProgressData);
+                } else {
+                    // Navigate with just course progress data if we have it
+                    if (courseProgressData !== null) {
+                        navigateToVideo(video, chapterIndex, { course_progress: courseProgressData });
+                    } else {
+                        // Navigate without progress data
+                        navigateToVideo(video, chapterIndex);
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching video progress:", error);
+                // On error, just navigate without progress data
+                navigateToVideo(video, chapterIndex);
+            }
+        };
+
+        // Helper function to navigate with or without progress data
+        const navigateToVideo = (video, chapterIndex, progressData = null) => {
+            navigate("/video-player", {
+                state: { 
+                    videoData: video,
+                    courseData: course,
+                    currentChapterIndex: chapterIndex,
+                    progressData: progressData // This will be null if no progress was found
+                }
+            });
+        };
+
+        // Execute the fetch and navigate
+        fetchAndNavigate();
+    };
+
+    // Add handleEnrollAndWatch function
+    const handleEnrollAndWatch = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                toast.error('Please login to enroll in the course');
+                return;
+            }
+
+            const response = await axios.post(
+                `http://localhost:5000/api/courses/${course._id}/enroll`,
+                {},
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+
+            if (response.status === 201) {
+                setIsEnrolled(true);
+                toast.success('Successfully enrolled in the course!');
+                setShowEnrollModal(false);
+                
+                // Navigate to the selected video after enrollment
+                if (selectedVideo) {
+                    navigate("/video-player", {
+                        state: { 
+                            videoData: selectedVideo.video,
+                            courseData: course,
+                            currentChapterIndex: selectedVideo.chapterIndex
+                        }
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error enrolling in course:', error);
+            if (error.response?.status === 400) {
+                toast.error(error.response.data.message);
+            } else {
+                toast.error('Failed to enroll in course. Please try again.');
+            }
+        }
     };
 
     if (isLoading) {
@@ -177,19 +401,25 @@ const CourseShow = () => {
                             <ListGroup variant="flush">
                                 <ListGroup.Item><strong>Category:</strong> {getCategoryName(course.category_id)}</ListGroup.Item>
                                 <ListGroup.Item><strong>Duration:</strong> {formatTotalDuration()}</ListGroup.Item>
-                                <ListGroup.Item><strong>Rating:</strong> {renderStars(course.rating || 0)}</ListGroup.Item>
+                                <ListGroup.Item><strong>Rating:</strong> <strong>{averageRating}</strong> {renderStars(averageRating)} ({totalRatings} ratings)</ListGroup.Item>
                             </ListGroup>
 
                             <Button
-                                variant={enrolled ? "dark" : "success"}
+                                variant={isEnrolled ? "dark" : "success"}
                                 className="mt-3 w-100 fw-bold"
                                 onClick={handleEnroll}
-                                disabled={enrolled}
+                                disabled={isEnrolled || isCheckingEnrollment}
                             >
-                                {enrolled ? "Enrolled ✅" : "Enroll Now"}
+                                {isCheckingEnrollment ? (
+                                    <Spinner animation="border" size="sm" />
+                                ) : isEnrolled ? (
+                                    "Enrolled ✅"
+                                ) : (
+                                    "Enroll Now"
+                                )}
                             </Button>
 
-                            {enrolled && <Alert variant="success" className="mt-2 text-center">You have successfully enrolled!</Alert>}
+                            {isEnrolled && <Alert variant="success" className="mt-2 text-center">You have successfully enrolled!</Alert>}
                         </Card.Body>
                     </Card>
                 </Col>
@@ -198,7 +428,7 @@ const CourseShow = () => {
                 <Col md={8}>
                     <h3 className="fw-bold mb-3" style={{ color: "#000000" }}>Course Chapters</h3>
                     {chapters.length > 0 ? (
-                        chapters.map((chapter, index) => {
+                        chapters.map((chapter, chapterIndex) => {
                             // Format video length to display as minutes:seconds
                             const formatVideoLength = (seconds) => {
                                 const minutes = Math.floor(seconds / 60);
@@ -212,7 +442,7 @@ const CourseShow = () => {
                             }, 0).toFixed(0) || 0;
 
                             return (
-                                <Card key={chapter._id || index} className="mb-2 shadow-sm">
+                                <Card key={chapter._id || chapterIndex} className="mb-2 shadow-sm">
                                     <Card.Header
                                         className="fw-bold d-flex justify-content-between align-items-center"
                                         style={{
@@ -221,7 +451,7 @@ const CourseShow = () => {
                                             color: "white",
                                             fontWeight: "bold",
                                         }}
-                                        onClick={() => toggleChapter(index)}
+                                        onClick={() => toggleChapter(chapterIndex)}
                                     >
                                         <div>{chapter.chapter_title}</div>
 
@@ -230,31 +460,31 @@ const CourseShow = () => {
                                             <span className="text-white me-2" style={{ fontSize: "0.9rem" }}>
                                                 ({chapter.videos?.length || 0} Lectures, {totalVideoLength} min)
                                             </span>
-                                            {openChapters[index] ? <ChevronUp /> : <ChevronDown />}
+                                            {openChapters[chapterIndex] ? <ChevronUp /> : <ChevronDown />}
                                         </div>
                                     </Card.Header>
 
                                     <motion.div
                                         initial={{ height: 0, opacity: 0 }}
-                                        animate={openChapters[index] ? { height: "auto", opacity: 1 } : { height: 0, opacity: 0 }}
+                                        animate={openChapters[chapterIndex] ? { height: "auto", opacity: 1 } : { height: 0, opacity: 0 }}
                                         transition={{ duration: 0.3, ease: "easeInOut" }}
                                         style={{ overflow: "hidden" }}
                                     >
                                         <Card.Body>
                                             <ListGroup variant="flush">
-                                                {chapter.videos?.map((video, vIndex) => (
+                                                {chapter.videos?.map((video) => (
                                                     <ListGroup.Item
-                                                        key={video._id || vIndex}
-                                                        className="d-flex justify-content-between"
-                                                        style={{ cursor: "pointer", color: "#0056b3" }}
-                                                        onClick={() => handleVideoClick(video)}
+                                                        key={video._id}
+                                                        className="d-flex justify-content-between align-items-center border-0 py-2"
+                                                        style={{ cursor: "pointer" }}
+                                                        onClick={() => handleVideoClick(video, chapterIndex)}
                                                     >
-                                                        <span>
-                                                            <CameraVideo className="me-2 text-success" /> 
-                                                            {video.video_title}
-                                                        </span>
+                                                        <div className="d-flex align-items-center">
+                                                            <CameraVideo className="me-2 text-primary" />
+                                                            <span>{video.video_title}</span>
+                                                        </div>
                                                         <span className="text-muted" style={{ fontSize: "0.9rem" }}>
-                                                            {formatVideoLength(video.video_length || 0)}
+                                                            {video.video_length ? formatVideoLength(video.video_length) : ""}
                                                         </span>
                                                     </ListGroup.Item>
                                                 ))}
@@ -279,6 +509,24 @@ const CourseShow = () => {
                     )}
                 </Col>
             </Row>
+
+            {/* Add Enroll Modal */}
+            <Modal show={showEnrollModal} onHide={() => setShowEnrollModal(false)}>
+                <Modal.Header closeButton>
+                    <Modal.Title>Enroll in Course</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <p>Please enroll in this course to watch the videos. Would you like to enroll now?</p>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowEnrollModal(false)}>
+                        Cancel
+                    </Button>
+                    <Button variant="primary" onClick={handleEnrollAndWatch}>
+                        Enroll and Watch
+                    </Button>
+                </Modal.Footer>
+            </Modal>
         </Container>
     );
 };

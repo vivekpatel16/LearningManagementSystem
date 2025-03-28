@@ -19,9 +19,13 @@ const ratings = [1, 2, 3, 4, 5];
 
 // Star Rating Display
 const renderStars = (rating) => (
-  <span>
+  <span className="d-inline-flex align-items-center">
     {[...Array(5)].map((_, i) => (
-      <FaStar key={i} color={i < rating ? "#ffc107" : "#e4e5e9"} />
+      <FaStar 
+        key={i} 
+        color={i < rating ? "#ffc107" : "#e4e5e9"} 
+        style={{ marginRight: '2px' }}
+      />
     ))}
   </span>
 );
@@ -56,11 +60,42 @@ const Courses = () => {
         
         if (coursesResponse.data && coursesResponse.data.data) {
           const courseData = coursesResponse.data.data;
-          setCourses(courseData);
+          
+          // Fetch ratings for each course
+          const coursesWithRatings = await Promise.all(
+            courseData.map(async (course) => {
+              try {
+                const ratingResponse = await common_API.get(`/rating/${course._id}`);
+                if (ratingResponse.status === 200) {
+                  return {
+                    ...course,
+                    averageRating: ratingResponse.data.averageRating || 0,
+                    totalRatings: ratingResponse.data.ratings?.length || 0
+                  };
+                } else {
+                  console.warn(`Failed to fetch rating for course ${course._id}:`, ratingResponse);
+                  return {
+                    ...course,
+                    averageRating: 0,
+                    totalRatings: 0
+                  };
+                }
+              } catch (err) {
+                console.error(`Error fetching rating for course ${course._id}:`, err);
+                return {
+                  ...course,
+                  averageRating: 0,
+                  totalRatings: 0
+                };
+              }
+            })
+          );
+          
+          setCourses(coursesWithRatings);
           
           // Fetch chapters and videos for each course to calculate duration
           const chaptersData = {};
-          for (const course of courseData) {
+          for (const course of coursesWithRatings) {
             try {
               const chaptersResponse = await Courses_API.get(`/chapter/${course._id}`);
               if (chaptersResponse.data && Array.isArray(chaptersResponse.data)) {
@@ -255,32 +290,27 @@ const Courses = () => {
     return minutes / 60;
   };
 
+  // Filter courses based on search query and filters
   const filteredCourses = courses.filter((course) => {
-    const matchesSearch = searchQuery
-      ? course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      course.description.toLowerCase().includes(searchQuery.toLowerCase())
-      : true;
-
-    const matchesCategory = selectedCategories.length
-      ? selectedCategories.includes(getCategoryName(course.category_id))
-      : true;
-
-    let matchesDuration = selectedDurations.length ? false : true;
-    if (selectedDurations.length) {
-      // Calculate course duration in minutes and convert to hours for filter comparison
-      const courseDurationMinutes = calculateCourseDuration(course._id);
-      const courseDurationHours = getDurationInHours(courseDurationMinutes);
-      
-      selectedDurations.forEach((durationLabel) => {
-        const durationRange = durations.find((d) => d.label === durationLabel);
-        if (durationRange && courseDurationHours >= durationRange.min && courseDurationHours <= durationRange.max) {
-          matchesDuration = true;
-        }
-      });
-    }
-
-    const matchesRating = selectedRatings.length ? selectedRatings.includes(course.rating) : true;
-
+    const matchesSearch = searchQuery === "" || 
+      course.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      course.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesCategory = selectedCategories.length === 0 || 
+      selectedCategories.includes(course.category_id);
+    
+    // Calculate course duration in hours for filtering
+    const durationMinutes = calculateCourseDuration(course._id);
+    const durationHours = durationMinutes / 60;
+    
+    const matchesDuration = selectedDurations.length === 0 || 
+      selectedDurations.some(range => 
+        durationHours >= range.min && durationHours <= range.max
+      );
+    
+    const matchesRating = selectedRatings.length === 0 || 
+      selectedRatings.includes(Math.round(course.averageRating || 0));
+    
     return matchesSearch && matchesCategory && matchesDuration && matchesRating;
   });
 
@@ -426,7 +456,14 @@ const Courses = () => {
                       <p><strong>Category:</strong> {getCategoryName(course.category_id)}</p>
                       <p><strong>Duration:</strong> {formatCourseDuration(course._id)}</p>
                       <p><strong>Instructor:</strong> {course.created_by?.user_name || "Unknown"}</p>
-                      <p><strong>Rating:</strong> {renderStars(course.rating || 0)}</p>
+                      <p className="mb-0">
+                        <strong>Rating:</strong> {' '}
+                        <strong style={{ color: "#0056b3", fontSize: "1.1rem" }}>
+                          {course.averageRating ? Number(course.averageRating).toFixed(1) : "0.0"}
+                        </strong> {' '}
+                        {renderStars(course.averageRating || 0)} {' '}
+                        <span className="text-muted">({course.totalRatings || 0})</span>
+                      </p>
                       <Button
                         variant="outline-primary"
                         size="sm"

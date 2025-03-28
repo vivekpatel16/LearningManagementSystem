@@ -367,16 +367,17 @@ const CourseDetail = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-    if (thumbnailInputRef.current) thumbnailInputRef.current.value = "";
+    if (thumbnailInputRed.current) thumbnailInputRed.current.value = "";
 
   };
 
   const openEditVideoModal = (chapter, video) => {
+    console.log("Opening edit modal for video:", video);
     setSelectedChapter(chapter);
     setEditingVideo(video);
-    setVideoTitle(video.title);
-    setVideoDescription(video.description);
-    setEditingThumbnail(video.thumbnail);
+    setVideoTitle(video.video_title || video.title || "");
+    setVideoDescription(video.video_description || video.description || "");
+    setEditingThumbnail(video.video_thumbnail || video.thumbnail || "");
     setSelectedFile(null);
     setUploadProgress(0);
     setShowVideoModal(true);
@@ -385,9 +386,9 @@ const CourseDetail = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-    if(thumbnailInputRef.current)
-    { thumbnailInputRef.current.value="";    }
-
+    if(thumbnailInputRed.current) { 
+      thumbnailInputRed.current.value = ""; 
+    }
   };
 
   const handleVideoSubmit = async () => {
@@ -413,22 +414,38 @@ const CourseDetail = () => {
       const formData = new FormData();
       formData.append("video_title", videoTitle);
       formData.append("video_description", videoDescription);
-      formData.append("video_thumbnail",videoThumbnail);
       
+      // Handle thumbnail correctly
+      if (videoThumbnail) {
+        if (videoThumbnail instanceof File) {
+          console.log("Appending thumbnail as file");
+          formData.append("video_thumbnail", videoThumbnail);
+        } else if (typeof videoThumbnail === 'string') {
+          console.log("Appending thumbnail as string");
+          formData.append("video_thumbnail", videoThumbnail);
+        }
+      } else if (editingThumbnail) {
+        console.log("Using existing thumbnail:", editingThumbnail);
+        formData.append("video_thumbnail", editingThumbnail);
+      }
 
       if (selectedFile) {
+        console.log("Appending video file:", selectedFile.name);
         formData.append("video", selectedFile);
       }
 
-      
-      if (videoThumbnail && videoThumbnail instanceof File) {  
-        formData.append("video_thumbnail", videoThumbnail); // Upload the file, not URL
-    }
-
-    let response;
+      let response;
       if (editingVideo) {
         // Update existing video
-       response = await Courses_API.patch(`/video/${editingVideo.id}`, formData, {
+        console.log(`Updating video ID: ${editingVideo.id || editingVideo._id}`);
+        const videoId = editingVideo.id || editingVideo._id;
+        
+        // Log the formData contents for debugging
+        for (let pair of formData.entries()) {
+          console.log(`Form data for update: ${pair[0]}: ${pair[1]}`);
+        }
+        
+        response = await Courses_API.patch(`/video/${videoId}`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -436,15 +453,26 @@ const CourseDetail = () => {
           }
         });
         
-        console.log("Video updated successfully:", response.data);
+        console.log("Video update response:", response.data);
         
-        // Refresh data from server to ensure we have the latest
+        // Display a toast or alert to show update success
+        alert("Video updated successfully!");
+        
+        // Reset form and close modal
+        resetFormAndCloseModal();
+        
+        // Refresh data from server to ensure we have the latest data
         await fetchChaptersAndVideos();
       } else {
         // Add new video
         formData.append("chapter_id", selectedChapter.id);
         
-         response = await Courses_API.post("/video", formData, {
+        // Log the formData contents for debugging
+        for (let pair of formData.entries()) {
+          console.log(`Form data for new video: ${pair[0]}: ${pair[1]}`);
+        }
+        
+        response = await Courses_API.post("/video", formData, {
           headers: { "Content-Type": "multipart/form-data" },
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -452,40 +480,22 @@ const CourseDetail = () => {
           }
         });
         
-
-        if(response.data)
-        {
-          console.log("Video created successfully:", response.data);
+        console.log("Video creation response:", response.data);
         
-        // Refresh data from server to ensure we have the latest
+        // Display a toast or alert to show creation success
+        alert("Video created successfully!");
+        
+        // Reset form and close modal
+        resetFormAndCloseModal();
+        
+        // Refresh data from server to ensure we have the latest data
         await fetchChaptersAndVideos();
-        }
-
         
         // Make sure the chapter is open to see the new video
         if (!openChapters.includes(selectedChapter.id)) {
           setOpenChapters(prev => [...prev, selectedChapter.id]);
         }
       }
-
-      // Reset form and close modal
-      setVideoTitle("");
-      setVideoDescription("");
-      setSelectedFile(null);
-      setEditingThumbnail(null);
-      setEditingVideo(null);
-      setSelectedChapter(null);
-      setShowVideoModal(false);
-      setUploadProgress(0);
-      
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-
-      if(thumbnailInputRed.current)thumbnailInputRed.current.value="";
-      // await fetchChaptersAndVideos
-
     } catch (error) {
       console.error("Error saving video:", error);
       
@@ -499,6 +509,28 @@ const CourseDetail = () => {
       alert(error.response?.data?.message || error.message || "An error occurred.");
     } finally {
       setVideoLoading(false);
+    }
+  };
+
+  const resetFormAndCloseModal = () => {
+    // Reset form and close modal
+    setVideoTitle("");
+    setVideoDescription("");
+    setSelectedFile(null);
+    setEditingThumbnail(null);
+    setVideoThumbnail(null);
+    setEditingVideo(null);
+    setSelectedChapter(null);
+    setShowVideoModal(false);
+    setUploadProgress(0);
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
+    if(thumbnailInputRed.current) {
+      thumbnailInputRed.current.value = "";
     }
   };
 
