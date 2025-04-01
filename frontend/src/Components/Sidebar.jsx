@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Offcanvas, Button } from "react-bootstrap";
-import { FaBars, FaBook, FaUsers, FaChartBar, FaFileAlt, FaHeart, FaChalkboardTeacher, FaHome, FaSignOutAlt, FaFolderOpen } from "react-icons/fa";
+import { FaBars, FaBook, FaUsers, FaChartBar, FaFileAlt, FaHeart, FaChalkboardTeacher, FaHome, FaSignOutAlt, FaFolderOpen, FaLayerGroup } from "react-icons/fa";
 import defaultProfilePic from "../assets/th.png";
 import { logout } from "../features/auth/authSlice"; // Adjust import path if needed
 import Footer from "./Footer"; // Import Footer component
@@ -10,19 +10,12 @@ import Footer from "./Footer"; // Import Footer component
 const Sidebar = () => {
   const { user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const [profileImage, setProfileImage] = useState(defaultProfilePic);
   const [show, setShow] = useState(false);
 
   useEffect(() => {
     setProfileImage(user?.user_image || defaultProfilePic);
   }, [user?.user_image]);
-
-  // Logout function
-  const handleLogout = () => {
-    dispatch(logout());
-    navigate("/login");
-  };
 
   return (
     <>
@@ -71,6 +64,9 @@ const Sidebar = () => {
                 <Link className="nav-link text-dark" to="/admin/reports" onClick={() => setShow(false)}>
                   <FaFileAlt className="me-2" /> Reports
                 </Link>
+                <Link className="nav-link text-dark" to="/admin/category" onClick={() => setShow(false)}>
+                  <FaLayerGroup className="me-2" /> Category
+                </Link>                
               </>
             )}
 
@@ -97,7 +93,7 @@ const Sidebar = () => {
                   <FaBook className="me-2" /> Courses
                 </Link>
                 <Link className="nav-link text-dark" to="/my-learning" onClick={() => setShow(false)}>
-                  <FaChartBar className="me-2" /> My Learning
+                  <FaFolderOpen className="me-2" /> My Learning
                 </Link>
                 <Link className="nav-link text-dark" to="/wishlist" onClick={() => setShow(false)}>
                   <FaHeart className="me-2" /> Wishlist
@@ -108,7 +104,7 @@ const Sidebar = () => {
 
           {/* Logout Button and Footer at Bottom */}
           <div>
-            <Button variant="danger" className="w-100 my-2" onClick={handleLogout}>
+            <Button variant="danger" className="w-100 my-2" onClick={() => dispatch(logout())}>
               <FaSignOutAlt className="me-2" /> Logout
             </Button>
             <Footer /> {/* Footer Component */}
