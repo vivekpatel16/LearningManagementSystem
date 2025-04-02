@@ -170,12 +170,19 @@ const Login = () => {
     
     console.log("Login successful for role:", data.user.role);
     
-    // Navigate based on role
+    // Navigate based on role using window.location.href instead of React Router
     const { role } = data.user;
-    if (role === "admin") navigate("/admin/dashboard");
-    else if (role === "instructor") navigate("/instructor/dashboard");
-    else if (role === "user") navigate("/home");
-    else navigate("/");
+    
+    // Use window.location.href for a hard redirect
+    if (role === "admin") {
+      window.location.href = "/admin/dashboard";
+    } else if (role === "instructor") {
+      window.location.href = "/instructor/dashboard";
+    } else if (role === "user") {
+      window.location.href = "/home";
+    } else {
+      window.location.href = "/";
+    }
     
     setLoading(false);
   };
