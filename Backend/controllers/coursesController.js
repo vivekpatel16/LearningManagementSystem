@@ -52,6 +52,8 @@ exports.fetchCourses = async (req, res) => {
     const allUser=await User.find({});
     const totalUser=allUser.filter((u)=>u.role==="user").length;
     const totalInstructor=allUser.filter((u)=>u.role==="instructor").length;
+    const activeLearnerIds = await VideoUser.distinct('user_id', { course_id: { $exists: true } });
+    const activeLearnersCount = activeLearnerIds.length;
     const allCourses=await Courses.countDocuments({status:true});
     
     let courses;
@@ -66,6 +68,7 @@ exports.fetchCourses = async (req, res) => {
       data:courses || [],
       totalUser,
       totalInstructor,
+      activeLearnersCount,
       allCourses,
       instructorCoursesCount
     });
@@ -146,14 +149,12 @@ exports.enrollCourse = async (req, res) => {
   try {
     const { course_id } = req.params;
     const user_id = req.user.id;
-
   
     const existingEnrollment = await VideoUser.findOne({ user_id, course_id });
     if (existingEnrollment) {
       return res.status(400).json({ message: "User is already enrolled in this course" });
     }
 
-   
     const firstChapter = await Chapter.findOne({ course_id }).sort({ order: 1 });
     if (!firstChapter) {
       return res.status(404).json({ message: "No chapters found for this course" });
@@ -172,11 +173,7 @@ exports.enrollCourse = async (req, res) => {
       completed: false
     });
 
-    res.status(201).json({
-      success: true,
-      message: "Successfully enrolled in course",
-      data: enrollment
-    });
+    res.status(201).json({message: "Successfully enrolled in course",data: enrollment });
   } catch (error) {
     console.error("server error enrolling in course:", error);
     res.status(500).json({ message: "server error while enrolling in course" });
@@ -352,52 +349,3 @@ exports.getEnrolledCourses = async (req, res) => {
     });
   }
 };
-
-// exports.getVideoProgress = async (req, res) => {
-//   try {
-//     const { user_id, course_id, video_id } = req.params;
-    
-    
-//     if (user_id !== req.user.id) {
-//       return res.status(403).json({
-//         success: false,
-//         message: "Unauthorized to access this user's progress"
-//       });
-//     }
-
-   
-//     const videoProgress = await VideoUser.findOne({
-//       user_id,
-//       course_id,
-//       video_id
-//     });
-
-//     if (!videoProgress) {
-//       return res.status(200).json({
-//         success: true,
-//         data: {
-//           current_time: 0,
-//           completed: false
-//         }
-//       });
-//     }
-
-//     res.status(200).json({
-//       success: true,
-//       data: {
-//         current_time: videoProgress.current_time || 0,
-//         completed: videoProgress.completed || false
-//       }
-//     });
-
-//   } catch (error) {
-//     console.error("Error fetching video progress:", error);
-//     console.error("Error stack:", error.stack);
-//     res.status(500).json({ 
-//       success: false,
-//       message: "Server error while fetching video progress",
-//       error: error.message,
-//       stack: error.stack
-//     });
-//   }
-// };

@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require("express");
 const dotenv = require("dotenv");
 const cors=require("cors");
 const connectDb = require('./config/db');
@@ -13,7 +13,6 @@ connectDb();
 const app = express();
 
 app.use(cors({ credentials: true }));
-// Increase payload size limits for large video files
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ limit: '500mb', extended: true }));
 app.use("/uploads",express.static("uploads"));
