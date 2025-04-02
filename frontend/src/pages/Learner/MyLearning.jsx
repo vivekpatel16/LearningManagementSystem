@@ -117,7 +117,8 @@ const MyLearning = () => {
     return (
         <div>
             <Header />
-            <Container className="mt-5">
+            <Container className="mt">
+
                 <h2 className="mb-4">My Learning</h2>
                 {enrolledCourses.length === 0 ? (
                     <div className="text-center">

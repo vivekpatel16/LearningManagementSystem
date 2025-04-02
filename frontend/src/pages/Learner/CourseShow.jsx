@@ -114,7 +114,10 @@ const CourseShow = () => {
                 const response = await axios.get(
                     `http://localhost:5000/api/courses/enrollment/${course._id}`,
                     {
-                        headers: { Authorization: `Bearer ${token}` }
+
+                        headers: {Authorization:`Bearer ${token}`}
+
+
                     }
                 );
 
@@ -145,7 +148,7 @@ const CourseShow = () => {
         
         // Convert to hours and minutes
         const hours = Math.floor(totalSeconds / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const minutes = Math.ceil((totalSeconds % 3600) / 60);
         
         // Format the string
         if (hours > 0) {

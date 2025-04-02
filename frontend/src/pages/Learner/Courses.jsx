@@ -11,7 +11,7 @@ const defaultImage = "https://www.futuretechinfovision.co.uk/wp-content/uploads/
 
 // Filter options
 const durations = [
-  { label: "Short (<3 hrs)", min: 1, max: 3 },
+  { label: "Short (<3 hrs)", min: 0, max: 3 },
   { label: "Medium (3-6 hrs)", min: 3, max: 6 },
   { label: "Long (6+ hrs)", min: 6, max: Infinity },
 ];
@@ -204,7 +204,18 @@ const Courses = () => {
   };
 
   const toggleSelection = (value, setter, selectedList) => {
-    setter(selectedList.includes(value) ? selectedList.filter((item) => item !== value) : [...selectedList, value]);
+    if (typeof value === 'object') {
+      // For objects like duration ranges, check if an object with the same label exists
+      const exists = selectedList.some(item => item.label === value.label);
+      if (exists) {
+        setter(selectedList.filter(item => item.label !== value.label));
+      } else {
+        setter([...selectedList, value]);
+      }
+    } else {
+      // For primitive values like category IDs
+      setter(selectedList.includes(value) ? selectedList.filter(item => item !== value) : [...selectedList, value]);
+    }
   };
   
   // Function to get valid thumbnail URL
@@ -299,14 +310,26 @@ const Courses = () => {
     const matchesCategory = selectedCategories.length === 0 || 
       selectedCategories.includes(course.category_id);
     
-    // Calculate course duration in hours for filtering
+
+    // Calculate course duration in minutes
     const durationMinutes = calculateCourseDuration(course._id);
+    // Convert to hours for filtering (ensuring courses with less than 60 minutes still show up for "Short" filter)
     const durationHours = durationMinutes / 60;
     
+    // When duration filters are applied, log each course's duration for debugging
+    if (selectedDurations.length > 0) {
+      console.log(`Course: ${course.title}, Duration: ${durationMinutes} min (${durationHours.toFixed(2)} hours)`);
+    }
+    
     const matchesDuration = selectedDurations.length === 0 || 
-      selectedDurations.some(range => 
-        durationHours >= range.min && durationHours <= range.max
-      );
+      selectedDurations.some(range => {
+        const matches = durationHours >= range.min && durationHours <= range.max;
+        if (selectedDurations.length > 0) {
+          console.log(`  Checking against range ${range.label}: ${matches ? 'MATCH' : 'NO MATCH'}`);
+        }
+        return matches;
+      });
+
     
     const matchesRating = selectedRatings.length === 0 || 
       selectedRatings.includes(Math.round(course.averageRating || 0));
@@ -392,10 +415,27 @@ const Courses = () => {
               }}
             >
               <FaFilter /> Filters
+              {(selectedCategories.length > 0 || selectedDurations.length > 0 || selectedRatings.length > 0) && (
+                <span className="ms-1 badge bg-danger">
+                  {selectedCategories.length + selectedDurations.length + selectedRatings.length}
+                </span>
+              )}
             </Button>
           </Col>
         )}
       </Row>
+      
+      {/* Show how many courses match the current filters */}
+      {!isLoading && (
+        <Row className="mb-3">
+          <Col>
+            <p className="text-muted">
+              Showing {filteredCourses.length} of {courses.length} courses
+              {(selectedCategories.length > 0 || selectedDurations.length > 0 || selectedRatings.length > 0 || searchQuery) && " (filtered)"}
+            </p>
+          </Col>
+        </Row>
+      )}
 
       <Row>
         <motion.div initial={{ width: "100%" }} animate={{ width: showFilters ? "75%" : "100%" }} transition={{ duration: 0.3 }}>
@@ -531,9 +571,8 @@ const Courses = () => {
                           key={cat._id} 
                           type="checkbox" 
                           label={cat.category_name} 
-                          value={cat.category_name}
-                          checked={selectedCategories.includes(cat.category_name)}
-                          onChange={() => toggleSelection(cat.category_name, setSelectedCategories, selectedCategories)}
+                          checked={selectedCategories.includes(cat._id)}
+                          onChange={() => toggleSelection(cat._id, setSelectedCategories, selectedCategories)}
                         />
                       ))
                     ) : (
@@ -545,9 +584,15 @@ const Courses = () => {
                   <Accordion.Header>Course Duration</Accordion.Header>
                   <Accordion.Body>
                     {durations.map((dur) => (
-                      <Form.Check key={dur.label} type="checkbox" label={dur.label} value={dur.label}
-                        checked={selectedDurations.includes(dur.label)}
-                        onChange={() => toggleSelection(dur.label, setSelectedDurations, selectedDurations)}
+                      <Form.Check 
+                        key={dur.label} 
+                        type="checkbox" 
+                        label={dur.label}
+                        checked={selectedDurations.some(d => d.label === dur.label)}
+                        onChange={() => {
+                          console.log("Toggling duration:", dur);
+                          toggleSelection(dur, setSelectedDurations, selectedDurations);
+                        }}
                       />
                     ))}
                   </Accordion.Body>
@@ -568,9 +613,11 @@ const Courses = () => {
                 variant="secondary"
                 className="mt-3 w-100"
                 onClick={() => {
+                  console.log("Selected durations before reset:", selectedDurations);
                   setSelectedCategories([]);
                   setSelectedDurations([]);
                   setSelectedRatings([]);
+                  console.log("Duration filters reset");
                 }}
                 style={{
                   borderColor: "#6c757d", // Secondary border color (gray)

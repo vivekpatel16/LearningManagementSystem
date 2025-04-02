@@ -1,8 +1,9 @@
+
 import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Link } from "react-router-dom";
 import { Offcanvas, Button } from "react-bootstrap";
-import { FaBars, FaBook, FaUsers, FaChartBar, FaFileAlt, FaHeart, FaChalkboardTeacher, FaHome, FaSignOutAlt, FaFolderOpen } from "react-icons/fa";
+import { FaBars, FaBook, FaUsers, FaChartBar, FaFileAlt, FaHeart, FaChalkboardTeacher, FaHome, FaSignOutAlt, FaFolderOpen, FaLayerGroup } from "react-icons/fa";
 import defaultProfilePic from "../assets/th.png";
 import { logout } from "../features/auth/authSlice"; // Adjust import path if needed
 import Footer from "./Footer"; // Import Footer component
@@ -63,6 +64,9 @@ const Sidebar = () => {
                 </Link>
                 <Link className="nav-link text-dark" to="/admin/reports" onClick={() => setShow(false)}>
                   <FaFileAlt className="me-2" /> Reports
+                </Link>
+                <Link className="nav-link text-dark" to="/admin/category" onClick={() => setShow(false)}>
+                  <FaLayerGroup className="me-2" /> Categories
                 </Link>
               </>
             )}

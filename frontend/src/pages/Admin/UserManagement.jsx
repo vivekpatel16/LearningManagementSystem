@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Container, Table, Button, Modal, Form, Card, InputGroup, FormControl } from "react-bootstrap";
+import { Container, Table, Button, Modal, Form, Card, InputGroup, FormControl, Toast } from "react-bootstrap";
 import { FaUserEdit, FaTrash, FaPlus, FaSearch, FaEye, FaEyeSlash } from "react-icons/fa";
 import Admin_API from "../../Api/adminApi";
 
@@ -9,6 +9,9 @@ const UserManagement = () => {
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState("Add");
   const [showPassword, setShowPassword] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastVariant, setToastVariant] = useState("success");
 
   // Separate states for new users and existing users
   const [newUser, setNewUser] = useState({ user_name: "", email: "", password: "", role: "user" });
@@ -24,6 +27,7 @@ const UserManagement = () => {
       const response = await Admin_API.get("/user");
       setUsers(response.data);
     } catch (error) {
+      showToastMessage("Failed to fetch users", "danger");
       console.error("Error fetching users:", error);
     }
   };
@@ -46,29 +50,42 @@ const UserManagement = () => {
     setCurrentUser({ ...currentUser, [e.target.name]: e.target.value });
   };
 
+  const showToastMessage = (message, variant = "success") => {
+    setToastMessage(message);
+    setToastVariant(variant);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
+
   const handleSave = async () => {
     try {
       if (modalType === "Add") {
         await Admin_API.post("/user", newUser);
+        showToastMessage("User added successfully");
       } else {
         await Admin_API.patch(`/user/${currentUser._id}`, currentUser);
+        showToastMessage("User updated successfully");
       }
       setShowModal(false);
       fetchUsers(); // Fetch updated data after saving
     } catch (error) {
+      showToastMessage(error.response?.data?.message || "Failed to save user", "danger");
       console.error("Error saving user:", error);
     }
   };
-  
 
   const handleDelete = async (id) => {
-    try {
-      const response = await Admin_API.delete(`/user/${id}`);
-      if (response.status === 200) {
-        setUsers(users.filter((user) => user._id !== id));
+    if (window.confirm("Are you sure you want to delete this user?")) {
+      try {
+        const response = await Admin_API.delete(`/user/${id}`);
+        if (response.status === 200) {
+          setUsers(users.filter((user) => user._id !== id));
+          showToastMessage("User deleted successfully");
+        }
+      } catch (error) {
+        showToastMessage("Failed to delete user", "danger");
+        console.error("Error deleting user:", error);
       }
-    } catch (error) {
-      console.error("Error deleting user:", error);
     }
   };
 
@@ -80,63 +97,107 @@ const UserManagement = () => {
 
   return (
     <Container className="mt-4">
-      <Card className="shadow p-3">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h4 className="mb-0">Manage Users</h4>
-          <Button variant="primary" size="sm" onClick={() => handleShowModal("Add")}>
-            <FaPlus /> Add User
-          </Button>
-        </div>
+      <div className="position-relative">
+        <Toast
+          show={showToast}
+          onClose={() => setShowToast(false)}
+          delay={3000}
+          autohide
+          className="position-fixed top-0 start-50 translate-middle-x mt-3"
+          style={{ 
+            zIndex: 9999,
+            minWidth: '300px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            border: 'none',
+            borderRadius: '8px',
+            animation: 'slideIn 0.5s ease-in-out'
+          }}
+          bg={toastVariant}
+        >
+          <Toast.Header className={`bg-${toastVariant} text-white`}>
+            <strong className="me-auto">
+              {toastVariant === 'success' ? 'Success!' : 'Error!'}
+            </strong>
+            <small className="text-white">Just now</small>
+          </Toast.Header>
+          <Toast.Body className={`bg-${toastVariant} text-white`}>
+            {toastMessage}
+          </Toast.Body>
+        </Toast>
 
-        {/* Search Bar */}
-        <div className="d-flex justify-content mb-3">
-          <InputGroup style={{ maxWidth: "500px" }}>
-            <InputGroup.Text><FaSearch /></InputGroup.Text>
-            <FormControl
-              type="text"
-              placeholder="Search by name or email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </InputGroup>
-        </div>
+        <style>
+          {`
+            @keyframes slideIn {
+              from {
+                transform: translate(-50%, -100%);
+                opacity: 0;
+              }
+              to {
+                transform: translate(-50%, 0);
+                opacity: 1;
+              }
+            }
+          `}
+        </style>
 
-        <Table striped bordered hover responsive>
-          <thead className="table-dark">
-            <tr>
-              <th>Index</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.length > 0 ? (
-              filteredUsers.map((user, index) => (
-                <tr key={user._id}>
-                  <td>{index + 1}</td>
-                  <td>{user.user_name}</td>
-                  <td>{user.email}</td>
-                  <td>{user.role}</td>
-                  <td>
-                    <Button variant="secondary" size="sm" className="me-2" onClick={() => handleShowModal("Edit", user)}>
-                      <FaUserEdit /> Edit
-                    </Button>
-                    <Button variant="danger" size="sm" onClick={() => handleDelete(user._id)}>
-                      <FaTrash /> Delete
-                    </Button>
-                  </td>
-                </tr>
-              ))
-            ) : (
+        <Card className="shadow p-3">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h4 className="mb-0">Manage Users</h4>
+            <Button variant="primary" size="sm" onClick={() => handleShowModal("Add")}>
+              <FaPlus /> Add User
+            </Button>
+          </div>
+
+          {/* Search Bar */}
+          <div className="d-flex justify-content mb-3">
+            <InputGroup style={{ maxWidth: "500px" }}>
+              <InputGroup.Text><FaSearch /></InputGroup.Text>
+              <FormControl
+                type="text"
+                placeholder="Search by name or email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </InputGroup>
+          </div>
+
+          <Table striped bordered hover responsive>
+            <thead className="table-dark">
               <tr>
-                <td colSpan="5" className="text-center">No users found</td>
+                <th>Index</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Actions</th>
               </tr>
-            )}
-          </tbody>
-        </Table>
-      </Card>
+            </thead>
+            <tbody>
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((user, index) => (
+                  <tr key={user._id}>
+                    <td>{index + 1}</td>
+                    <td>{user.user_name}</td>
+                    <td>{user.email}</td>
+                    <td>{user.role}</td>
+                    <td>
+                      <Button variant="secondary" size="sm" className="me-2" onClick={() => handleShowModal("Edit", user)}>
+                        <FaUserEdit /> Edit
+                      </Button>
+                      <Button variant="danger" size="sm" onClick={() => handleDelete(user._id)}>
+                        <FaTrash /> Delete
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" className="text-center">No users found</td>
+                </tr>
+              )}
+            </tbody>
+          </Table>
+        </Card>
+      </div>
 
       {/* Add/Edit Modal */}
       <Modal show={showModal} onHide={() => setShowModal(false)}>
@@ -168,7 +229,7 @@ const UserManagement = () => {
             <Form.Group className="mb-3">
               <Form.Label>Password</Form.Label>
               <div style={{ position: "relative" }}>
-              <Form.Control
+                <Form.Control
                   type={showPassword ? "text" : "password"}
                   name="password"
                   value={modalType === "Add" ? newUser.password : currentUser.password}
@@ -198,7 +259,7 @@ const UserManagement = () => {
                     color: "#666"
                   }}
                   onClick={() => setShowPassword(!showPassword)}
-                  className={showPassword ? "" : "d-none"}
+                  className={!showPassword ? "d-none" : ""}
                 />
               </div>
             </Form.Group>
@@ -208,8 +269,9 @@ const UserManagement = () => {
                 name="role"
                 value={modalType === "Add" ? newUser.role : currentUser.role}
                 onChange={modalType === "Add" ? handleChangeNewUser : handleChangeCurrentUser}
+                required
               >
-                <option value="user">Learner</option>
+                <option value="user">User</option>
                 <option value="instructor">Instructor</option>
                 <option value="admin">Admin</option>
               </Form.Select>
@@ -217,8 +279,12 @@ const UserManagement = () => {
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
-          <Button variant="success" size="sm" onClick={handleSave}>Save</Button>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleSave}>
+            {modalType === "Add" ? "Add" : "Update"}
+          </Button>
         </Modal.Footer>
       </Modal>
     </Container>

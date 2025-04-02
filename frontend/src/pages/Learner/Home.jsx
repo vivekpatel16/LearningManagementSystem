@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Container, Row, Col, Card, Button, Form, InputGroup, Spinner, Alert } from "react-bootstrap";
 import { FaSearch, FaChevronLeft, FaChevronRight, FaChalkboardTeacher } from "react-icons/fa";
@@ -98,7 +99,19 @@ const Home = () => {
       {/* Search Input */}
       <Row className="mb-4 align-items-center">
         <Col md={12}>
-          <InputGroup className="search-bar" style={{ border: "2px solid #ccc", borderRadius: "50px" }}>
+
+          <InputGroup
+            style={{
+              width: "100%",
+              height: "50px",
+              borderRadius: "50px",
+              overflow: "hidden",
+              border: "2px solid #ccc",
+              transition: "0.3s ease-in-out",
+            }}
+            className="search-bar"
+          >
+
             <InputGroup.Text style={{ background: "white", border: "none" }}>
               <FaSearch />
             </InputGroup.Text>
@@ -107,11 +120,19 @@ const Home = () => {
               placeholder="Search for a course..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ border: "none", outline: "none", boxShadow: "none" }}
+              style={{
+                height: "50px",
+                borderRadius: "50px",
+                border: "none",
+                outline: "none",
+                boxShadow: "none",
+              }}
+
             />
           </InputGroup>
         </Col>
       </Row>
+
 
       {/* Loading & Error Handling */}
       {loading && (
