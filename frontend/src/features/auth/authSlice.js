@@ -8,6 +8,7 @@ export const loginUser = createAsyncThunk("users/loginUser", async (credentials,
     
     const response = await common_API.post("/login", credentials, {
       headers: { "Content-Type": "application/json" },
+      withCredentials: true
     });
     
     console.log("Login response status:", response.status);
