@@ -9,6 +9,7 @@ const Dashboard = () => {
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalInstructors, setTotalInstructors] = useState(0);
   const [totalCourses, setTotalCourses] = useState(0);
+  const [activeLearners, setActiveLearners] = useState(0);
   const [recentActivities, setRecentActivities] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,6 +28,7 @@ const Dashboard = () => {
           setTotalUsers(response.data.totalUser);
           setTotalInstructors(response.data.totalInstructor);
           setTotalCourses(response.data.allCourses);
+          setActiveLearners(response.data.activeLearnersCount);
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error.response?.data || error.message);
@@ -74,7 +76,7 @@ const Dashboard = () => {
               <Card className="shadow text-center p-3">
                 <FaUserGraduate size={40} className="text-warning mb-2" />
                 <h5>Active Learners</h5>
-                <h3>0</h3>
+                <h3>{activeLearners}</h3>
               </Card>
             </Col>
             <Col md={3}>

@@ -17,6 +17,7 @@ import MyLearning from "./pages/Learner/MyLearning";
 import Wishlist from "./pages/Learner/Wishlist";
 import Courses from "./pages/Learner/Courses";
 import CourseShow from "./pages/Learner/CourseShow";
+import Category from "./pages/Admin/Category";
 import VideoPlayer from "./Components/VideoPlayer";
 import Header from "./Components/Header";
 import Profile from "./Components/Profile";
@@ -235,7 +236,8 @@ function App() {
         <Route path="/admin/users" element={<PrivateRoute element={<UserManagement />} roles={["admin"]} />} />
         <Route path="/admin/courses" element={<PrivateRoute element={<AdminCourseManagement />} roles={["admin"]} />} />
         <Route path="/admin/reports" element={<PrivateRoute element={<Reports />} roles={["admin"]} />} />
-
+        <Route path="/admin/category" element={<PrivateRoute element={<Category />} roles={["admin"]} />} />
+        
         {/* Instructor Routes */}
         <Route path="/instructor/dashboard" element={<PrivateRoute element={<InstructorDashboard />} roles={["instructor"]} />} />
         <Route path="/instructor/courses" element={<PrivateRoute element={<InstructorCourses />} roles={["instructor"]} />} />
@@ -248,10 +250,10 @@ function App() {
         <Route path="/wishlist" element={<PrivateRoute element={<Wishlist />} roles={["user"]} />} />
         <Route path="/courses" element={<PrivateRoute element={<Courses />} roles={["user"]} />} />
         <Route path="/courses/courseshow/:courseId" element={<PrivateRoute element={<CourseShow />} roles={["user"]} />} />
+        <Route path="/video-player" element={<PrivateRoute element={<VideoPlayer />} roles={["user"]} />} />
 
         {/* Shared Profile Route */}
         <Route path="/profile" element={<PrivateRoute element={<Profile />} roles={["admin", "instructor", "user"]} />} />
-        <Route path="/video-player" element={<PrivateRoute element={<VideoPlayer />} roles={["user", "instructor"]} />} />
       </Routes>
     </>
   );
