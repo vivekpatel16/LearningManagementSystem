@@ -35,13 +35,13 @@ console.log("Environment:", import.meta.env.MODE);
 console.log("API Base URL:", API_CONFIG.BASE_URL);
 
 // Test API connectivity at startup
-testApiConnection()
-  .then(isConnected => {
-    console.log("API connectivity test result:", isConnected ? "CONNECTED" : "FAILED");
-  })
-  .catch(error => {
-    console.error("API connectivity test error:", error);
-  });
+// testApiConnection()
+//   .then(isConnected => {
+//     console.log("API connectivity test result:", isConnected ? "CONNECTED" : "FAILED");
+//   })
+//   .catch(error => {
+//     console.error("API connectivity test error:", error);
+//   });
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
