@@ -1,5 +1,10 @@
 const Category = require("../models/categoryModel");
-
+const CoursesInfo = require("../models/coursesInfoModel");
+const Chapter = require("../models/chapterModel");
+const VideoInfo = require("../models/videoModel");
+const VideoUser = require("../models/videoUserModel");
+const CourseRating = require("../models/CourseRatingModel");
+const Wishlist = require("../models/wishlistModel");
 exports.addCategories = async (req, res) => {
   try {
 
@@ -92,15 +97,6 @@ exports.deleteCategory=async(req,res)=>
         return res.status(404).json({message:"category not found"});
       }
       
-      // Import all models needed for cascade deletion
-      const CoursesInfo = require("../models/coursesInfoModel");
-      const Chapter = require("../models/chapterModel");
-      const VideoInfo = require("../models/videoModel");
-      const VideoUser = require("../models/videoUserModel");
-      const CourseRating = require("../models/CourseRatingModel");
-      const Wishlist = require("../models/wishlistModel");
-      
-      // Step 1: Find all courses under this category
       const coursesUnderCategory = await CoursesInfo.find({ category_id: category_id });
       const courseIds = coursesUnderCategory.map(course => course._id);
       
@@ -111,33 +107,33 @@ exports.deleteCategory=async(req,res)=>
         const chapters = await Chapter.find({ course_id: { $in: courseIds } });
         const chapterIds = chapters.map(chapter => chapter._id);
         
-        console.log(`Found ${chapters.length} chapters for courses under this category`);
+        // console.log(`Found ${chapters.length} chapters for courses under this category`);
         
         if (chapterIds.length > 0) {
           // Step 3: Delete all videos for these chapters
           const deletedVideos = await VideoInfo.deleteMany({ chapter_id: { $in: chapterIds } });
-          console.log(`Deleted ${deletedVideos.deletedCount} videos`);
+          // console.log(`Deleted ${deletedVideos.deletedCount} videos`);
         }
         
         // Step 4: Delete all chapters for these courses
         const deletedChapters = await Chapter.deleteMany({ course_id: { $in: courseIds } });
-        console.log(`Deleted ${deletedChapters.deletedCount} chapters`);
+        // console.log(`Deleted ${deletedChapters.deletedCount} chapters`);
         
         // Step 5: Delete all video progress/enrollments for these courses
         const deletedProgress = await VideoUser.deleteMany({ course_id: { $in: courseIds } });
-        console.log(`Deleted ${deletedProgress.deletedCount} video progress records`);
+        // console.log(`Deleted ${deletedProgress.deletedCount} video progress records`);
         
         // Step 6: Delete all ratings for these courses
         const deletedRatings = await CourseRating.deleteMany({ course_id: { $in: courseIds } });
-        console.log(`Deleted ${deletedRatings.deletedCount} course ratings`);
+        // console.log(`Deleted ${deletedRatings.deletedCount} course ratings`);
         
         // Step 7: Delete all wishlist entries for these courses
         const deletedWishlists = await Wishlist.deleteMany({ course_id: { $in: courseIds } });
-        console.log(`Deleted ${deletedWishlists.deletedCount} wishlist entries`);
+        // console.log(`Deleted ${deletedWishlists.deletedCount} wishlist entries`);
         
         // Step 8: Delete all courses
         const deletedCourses = await CoursesInfo.deleteMany({ category_id: category_id });
-        console.log(`Deleted ${deletedCourses.deletedCount} courses`);
+        // console.log(`Deleted ${deletedCourses.deletedCount} courses`);
       }
       
       // Step 9: Finally delete the category itself
