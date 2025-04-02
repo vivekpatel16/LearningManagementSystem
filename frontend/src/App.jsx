@@ -18,8 +18,6 @@ import Wishlist from "./pages/Learner/Wishlist";
 import Courses from "./pages/Learner/Courses";
 import CourseShow from "./pages/Learner/CourseShow";
 import Category from "./pages/Admin/Category";
-
-
 import VideoPlayer from "./Components/VideoPlayer";
 import Header from "./Components/Header";
 import Profile from "./Components/Profile";

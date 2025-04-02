@@ -3,13 +3,19 @@ import common_API from "../../Api/commonApi";
 
 export const loginUser = createAsyncThunk("users/loginUser", async (credentials, { rejectWithValue }) => {
   try {
+    console.log("Login attempt to:", common_API.defaults.baseURL);
+    console.log("Login credentials:", { email: credentials.email });
+    
     const response = await common_API.post("/login", credentials, {
       headers: { "Content-Type": "application/json" },
     });
     
+    console.log("Login response status:", response.status);
+    
     // Check if token is valid (contains necessary role info)
     const token = response.data.token;
     if (!token) {
+      console.error("Invalid token received from server");
       return rejectWithValue({ message: "Invalid token received" });
     }
     
@@ -18,9 +24,12 @@ export const loginUser = createAsyncThunk("users/loginUser", async (credentials,
       const payload = JSON.parse(atob(token.split('.')[1]));
       // Ensure role in token matches role in user object
       if (payload.role !== response.data.user.role) {
+        console.error("Role mismatch:", { tokenRole: payload.role, userRole: response.data.user.role });
         return rejectWithValue({ message: "Authentication data mismatch" });
       }
+      console.log("Login successful for user role:", payload.role);
     } catch (err) {
+      console.error("Token parsing error:", err);
       return rejectWithValue({ message: "Invalid token format" });
     }
     
@@ -28,6 +37,14 @@ export const loginUser = createAsyncThunk("users/loginUser", async (credentials,
     localStorage.setItem("token", response.data.token);
     return response.data;
   } catch (error) {
+    console.error("Login error:", error.message);
+    if (error.response) {
+      console.error("Server response:", error.response.status, error.response.data);
+    } else if (error.request) {
+      console.error("No response received from server");
+    } else {
+      console.error("Error setting up request:", error.message);
+    }
     return rejectWithValue(error.response?.data || { message: "Login failed" });
   }
 });

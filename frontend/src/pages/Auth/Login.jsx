@@ -1,30 +1,183 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { loginUser } from "../../features/auth/authSlice";
 import { useNavigate } from "react-router-dom";
-import { FaEye, FaEyeSlash } from "react-icons/fa"; 
+import { FaEye, FaEyeSlash } from "react-icons/fa";
+import API_CONFIG from "../../config/apiConfig";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); 
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { loading, error } = useSelector((state) => state.auth);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const response = await dispatch(loginUser({ email, password }));
+    setLoading(true);
+    setError(null);
 
-    if (response.meta.requestStatus === "fulfilled") {
-      const { role } = response.payload.user;
-      if (role === "admin") navigate("/admin/dashboard");
-      else if (role === "instructor") navigate("/instructor/dashboard");
-      else if (role === "user") navigate("/home");
-      else navigate("/");
+    // Direct fetch to production API
+    const loginUrl = "https://learningmanagementsystem-2-bj3z.onrender.com/api/users/login";
+    console.log("Attempting login with fetch to:", loginUrl);
+
+    // Save these for the final fallback method
+    const loginFormData = new FormData();
+    loginFormData.append("email", email);
+    loginFormData.append("password", password);
+    
+    let loginSuccess = false;
+
+    try {
+      let response;
+      let data;
+      
+      try {
+        // Try direct fetch first
+        response = await fetch(loginUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Origin': window.location.origin
+          },
+          body: JSON.stringify({ email, password })
+        });
+        
+        console.log("Login response status:", response.status);
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Login failed");
+        }
+        
+        data = await response.json();
+        loginSuccess = true;
+      } catch (directError) {
+        console.error("Direct fetch failed, trying with CORS proxy:", directError);
+        
+        try {
+          // If direct fetch fails, try using a CORS proxy
+          const corsProxyUrl = "https://cors-anywhere.herokuapp.com/";
+          const proxyLoginUrl = corsProxyUrl + loginUrl;
+          
+          console.log("Attempting with CORS proxy:", proxyLoginUrl);
+          
+          // Need to request temporary access at: https://cors-anywhere.herokuapp.com/corsdemo
+          response = await fetch(proxyLoginUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ email, password })
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Login failed");
+          }
+          
+          data = await response.json();
+          loginSuccess = true;
+        } catch (proxyError) {
+          console.error("CORS proxy failed, attempting final fallback:", proxyError);
+          
+          // Final desperate fallback - create hidden form and submit it
+          const tempForm = document.createElement('form');
+          tempForm.method = 'POST';
+          tempForm.action = loginUrl;
+          tempForm.style.display = 'none';
+          
+          const emailInput = document.createElement('input');
+          emailInput.name = 'email';
+          emailInput.value = email;
+          tempForm.appendChild(emailInput);
+          
+          const passwordInput = document.createElement('input');
+          passwordInput.name = 'password';
+          passwordInput.value = password;
+          tempForm.appendChild(passwordInput);
+          
+          // Create a response handler iframe
+          const responseFrame = document.createElement('iframe');
+          responseFrame.name = 'loginResponseFrame';
+          responseFrame.style.display = 'none';
+          document.body.appendChild(responseFrame);
+          
+          // Set form to submit to the iframe
+          tempForm.target = 'loginResponseFrame';
+          document.body.appendChild(tempForm);
+          
+          // Listen for iframe load and extract response
+          responseFrame.addEventListener('load', function() {
+            try {
+              // Try to parse the response from the iframe
+              const frameContent = responseFrame.contentDocument.body.innerHTML;
+              data = JSON.parse(frameContent);
+              processLoginData(data);
+              
+              // Clean up
+              document.body.removeChild(tempForm);
+              document.body.removeChild(responseFrame);
+            } catch (frameError) {
+              console.error("Failed to process iframe response:", frameError);
+              setError("All login methods failed. Please try again later.");
+              setLoading(false);
+            }
+          });
+          
+          // Submit the form
+          console.log("Submitting form fallback...");
+          tempForm.submit();
+          
+          // Return early since we're handling the response asynchronously
+          return;
+        }
+      }
+      
+      console.log("Login successful");
+      processLoginData(data);
+      
+    } catch (error) {
+      console.error("Login failed:", error.message);
+      setError(error.message || "Login failed. Please check your credentials.");
+      
+      // Also update Redux with error
+      dispatch({ 
+        type: 'auth/loginUser/rejected', 
+        payload: { message: error.message || "Login failed" }
+      });
+      setLoading(false);
     }
+  };
+  
+  // Separate function to handle successful login data
+  const processLoginData = (data) => {
+    // Store auth data in localStorage
+    localStorage.setItem("user", JSON.stringify(data.user));
+    localStorage.setItem("token", data.token);
+    
+    // Also update Redux state
+    dispatch({ 
+      type: 'auth/loginUser/fulfilled', 
+      payload: data
+    });
+    
+    console.log("Login successful for role:", data.user.role);
+    
+    // Navigate based on role
+    const { role } = data.user;
+    if (role === "admin") navigate("/admin/dashboard");
+    else if (role === "instructor") navigate("/instructor/dashboard");
+    else if (role === "user") navigate("/home");
+    else navigate("/");
+    
+    setLoading(false);
   };
 
   return (

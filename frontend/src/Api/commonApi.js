@@ -1,8 +1,16 @@
 import axios from "axios";
 import { store } from "../features/auth/store";
 import { logout } from "../features/auth/authSlice";
+import API_CONFIG from "../config/apiConfig";
 
-const common_API = axios.create({ baseURL: "http://localhost:5000/api/users" });
+console.log("API Base URL:", API_CONFIG.BASE_URL);
+
+const common_API = axios.create({ 
+  baseURL: `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}` 
+});
+
+// Log the full baseURL for debugging
+console.log("Common API BaseURL:", `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}`);
 
 // Flag to prevent multiple redirects
 let isRedirecting = false;

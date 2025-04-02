@@ -7,6 +7,7 @@ import common_API from "../../Api/commonApi";
 import Courses_API from "../../Api/courseApi";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import { getApiUrl } from "../../utils/apiUtils";
 
 const CourseShow = () => {
     const { courseId } = useParams();
@@ -112,12 +113,9 @@ const CourseShow = () => {
                 }
 
                 const response = await axios.get(
-                    `http://localhost:5000/api/courses/enrollment/${course._id}`,
+                    getApiUrl(`/api/courses/enrollment/${course._id}`),
                     {
-
                         headers: {Authorization:`Bearer ${token}`}
-
-
                     }
                 );
 
@@ -176,7 +174,7 @@ const CourseShow = () => {
             }
 
             const response = await axios.post(
-                `http://localhost:5000/api/courses/${course._id}/enroll`,
+                getApiUrl(`/api/courses/${course._id}/enroll`),
                 {},
                 {
                     headers: { Authorization: `Bearer ${token}` }
@@ -249,7 +247,7 @@ const CourseShow = () => {
                 let courseProgressData = null;
                 try {
                     const coursesResponse = await axios.get(
-                        'http://localhost:5000/api/courses/enrolled',
+                        getApiUrl('/api/courses/enrolled'),
                         {
                             headers: { Authorization: `Bearer ${token}` }
                         }
@@ -270,7 +268,7 @@ const CourseShow = () => {
 
                 // Try to fetch progress for this video
                 const progressResponse = await axios.get(
-                    `http://localhost:5000/api/courses/video/progress/${userId}/${course._id}/${video._id}`,
+                    getApiUrl(`/api/courses/video/progress/${userId}/${course._id}/${video._id}`),
                     {
                         headers: { Authorization: `Bearer ${token}` }
                     }
@@ -329,7 +327,7 @@ const CourseShow = () => {
             }
 
             const response = await axios.post(
-                `http://localhost:5000/api/courses/${course._id}/enroll`,
+                getApiUrl(`/api/courses/${course._id}/enroll`),
                 {},
                 {
                     headers: { Authorization: `Bearer ${token}` }

@@ -118,7 +118,6 @@ const MyLearning = () => {
         <div>
             <Header />
             <Container className="mt">
-
                 <h2 className="mb-4">My Learning</h2>
                 {enrolledCourses.length === 0 ? (
                     <div className="text-center">

@@ -310,7 +310,6 @@ const Courses = () => {
     const matchesCategory = selectedCategories.length === 0 || 
       selectedCategories.includes(course.category_id);
     
-
     // Calculate course duration in minutes
     const durationMinutes = calculateCourseDuration(course._id);
     // Convert to hours for filtering (ensuring courses with less than 60 minutes still show up for "Short" filter)
@@ -329,7 +328,6 @@ const Courses = () => {
         }
         return matches;
       });
-
     
     const matchesRating = selectedRatings.length === 0 || 
       selectedRatings.includes(Math.round(course.averageRating || 0));

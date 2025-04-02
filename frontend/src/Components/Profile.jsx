@@ -1,10 +1,12 @@
-import React, { useState, useRef } from "react";
-import { Container, Row, Col, Card, Button, Modal, Form, Alert } from "react-bootstrap";
+import React, { useState, useRef, useEffect } from "react";
+import { Container, Row, Col, Card, Button, Modal, Form, Alert, Image, Spinner } from "react-bootstrap";
 import { useSelector, useDispatch } from "react-redux";
 import { logout, updateUser } from "../features/auth/authSlice";
 import { PencilSquare } from "react-bootstrap-icons";
 import axios from "axios";
 import defaultProfilePic from "../assets/th.png";
+import { toast } from "react-hot-toast";
+import { getApiUrl, getResourceUrl } from "../utils/apiUtils";
 
 const Profile = () => {
   const { user } = useSelector((state) => state.auth);
@@ -32,7 +34,7 @@ const Profile = () => {
         try {
           const token = localStorage.getItem("token");
           const response = await axios.patch(
-            "http://localhost:5000/api/users/profile",
+            getApiUrl("/api/users/profile"),
             { user_image: reader.result },
             { headers: { Authorization: `Bearer ${token}` } }
           );
@@ -52,9 +54,8 @@ const Profile = () => {
   const handleDeleteImage = async () => {
     try {
       const token = localStorage.getItem("token");
-      await axios.patch(
-        "http://localhost:5000/api/users/delete-image",
-        { userId: user._id },
+      const deleteResponse = await axios.delete(
+        getApiUrl("/api/users/delete-image"),
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const updatedUser = { ...user, user_image: "" };
@@ -80,13 +81,15 @@ const Profile = () => {
   
     try {
       const token = localStorage.getItem("token");
-      const updateData = { user_name: formData.user_name };
-      if (formData.password) updateData.password = formData.password;
-  
       const response = await axios.patch(
-        "http://localhost:5000/api/users/profile",
-        updateData,
-        { headers: { Authorization: `Bearer ${token}` } }
+        getApiUrl("/api/users/profile"),
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
   
       dispatch(updateUser(response.data.user));

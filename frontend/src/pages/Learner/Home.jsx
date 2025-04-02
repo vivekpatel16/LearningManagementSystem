@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Container, Row, Col, Card, Button, Form, InputGroup, Spinner, Alert } from "react-bootstrap";
 import { FaSearch, FaChevronLeft, FaChevronRight, FaChalkboardTeacher } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import axios from "axios"; // Import Axios
+import axios from "axios";
+import { getApiUrl } from "../../utils/apiUtils"; // Import API utility
 
 const defaultImage = "https://www.futuretechinfovision.co.uk/wp-content/uploads/2022/06/IT-Courses.jpg";
 
@@ -31,12 +31,12 @@ const Home = () => {
         const headers = token ? { Authorization: `Bearer ${token}` } : {}; // Include token in headers
 
         // ✅ Fetch categories
-        const categoryResponse = await axios.get("http://localhost:5000/api/courses/category", { headers });
+        const categoryResponse = await axios.get(getApiUrl("/api/courses/category"), { headers });
         console.log("Fetched Categories:", categoryResponse.data);
         setCategories(categoryResponse.data); // Store category names
 
         // ✅ Fetch courses
-        const courseResponse = await axios.get("http://localhost:5000/api/users/courses", { headers });
+        const courseResponse = await axios.get(getApiUrl("/api/users/courses"), { headers });
         console.log("Fetched Courses:", courseResponse.data);
 
         // ✅ Store only necessary fields
@@ -99,7 +99,6 @@ const Home = () => {
       {/* Search Input */}
       <Row className="mb-4 align-items-center">
         <Col md={12}>
-
           <InputGroup
             style={{
               width: "100%",
@@ -111,7 +110,6 @@ const Home = () => {
             }}
             className="search-bar"
           >
-
             <InputGroup.Text style={{ background: "white", border: "none" }}>
               <FaSearch />
             </InputGroup.Text>
@@ -127,7 +125,6 @@ const Home = () => {
                 outline: "none",
                 boxShadow: "none",
               }}
-
             />
           </InputGroup>
         </Col>

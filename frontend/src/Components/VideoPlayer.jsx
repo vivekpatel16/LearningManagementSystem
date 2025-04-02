@@ -10,6 +10,7 @@ import "react-circular-progressbar/dist/styles.css";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import common_API from "../Api/commonApi";
+import { getApiUrl, getResourceUrl } from "../utils/apiUtils";
 
 const VideoPlayer = () => {
     const location = useLocation();
@@ -80,12 +81,9 @@ const VideoPlayer = () => {
             setCourseData(course);
 
             // Fetch chapters for the course
-            const chaptersResponse = await axios.get(
-                `http://localhost:5000/api/courses/chapter/${courseId}`,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
+            const chaptersResponse = await axios.get(getApiUrl(`/api/courses/chapter/${courseId}`), {
+                headers: { Authorization: `Bearer ${token}` }
+            });
             
             if (chaptersResponse.status === 200) {
                 const chaptersData = chaptersResponse.data || [];
@@ -94,12 +92,9 @@ const VideoPlayer = () => {
                 const chaptersWithVideos = await Promise.all(
                     chaptersData.map(async (chapter) => {
                         try {
-                            const videosResponse = await axios.get(
-                                `http://localhost:5000/api/courses/video/${chapter._id}`,
-                                {
-                                    headers: { Authorization: `Bearer ${token}` }
-                                }
-                            );
+                            const videosResponse = await axios.get(getApiUrl(`/api/courses/video/${chapter._id}`), {
+                                headers: { Authorization: `Bearer ${token}` }
+                            });
                             
                             return {
                                 ...chapter,
@@ -168,7 +163,7 @@ const VideoPlayer = () => {
                     // Fetch progress data for all videos in the course
                     try {
                         const allProgressResponse = await axios.get(
-                            `http://localhost:5000/api/courses/enrolled`,
+                            getApiUrl('/api/courses/enrolled'),
                             {
                                 headers: { Authorization: `Bearer ${token}` }
                             }
@@ -191,7 +186,7 @@ const VideoPlayer = () => {
                                 for (const videoId of allVideoIds) {
                                     try {
                                         const videoProgressResponse = await axios.get(
-                                            `http://localhost:5000/api/courses/video/progress/${userId}/${courseId}/${videoId}`,
+                                            getApiUrl(`/api/courses/video/progress/${userId}/${courseId}/${videoId}`),
                                             {
                                                 headers: { Authorization: `Bearer ${token}` }
                                             }
@@ -288,7 +283,7 @@ const VideoPlayer = () => {
 
                 // Check if user is enrolled
                 const enrollmentResponse = await axios.get(
-                    `http://localhost:5000/api/courses/enrollment/${courseId}`,
+                    getApiUrl(`/api/courses/enrollment/${courseId}`),
                     {
                         headers: { Authorization: `Bearer ${token}` }
                     }
@@ -300,7 +295,7 @@ const VideoPlayer = () => {
                     // Fetch course progress data first to set it immediately
                     try {
                         const allProgressResponse = await axios.get(
-                            `http://localhost:5000/api/courses/enrolled`,
+                            getApiUrl('/api/courses/enrolled'),
                             {
                                 headers: { Authorization: `Bearer ${token}` }
                             }
@@ -470,7 +465,7 @@ const VideoPlayer = () => {
 
             // Call the backend API to update video progress
             const response = await axios.post(
-                'http://localhost:5000/api/courses/video/progress',
+                getApiUrl('/api/courses/video/progress'),
                 {
                     user_id: userId,
                     course_id: courseData._id,
@@ -556,7 +551,7 @@ const VideoPlayer = () => {
             
             // Update the API endpoint to match backend routes
             const response = await axios.get(
-                `http://localhost:5000/api/courses/comment/${videoId}`,
+                getApiUrl(`/api/courses/comment/${videoId}`),
                 {
                     headers: { Authorization: `Bearer ${token}` }
                 }
@@ -620,7 +615,7 @@ const VideoPlayer = () => {
             
             // Update API endpoint to match backend routes
             const response = await axios.post(
-                'http://localhost:5000/api/courses/comment',
+                getApiUrl('/api/courses/comment'),
                 {
                     user_id: userId,
                     video_id: currentLesson._id,
@@ -673,7 +668,7 @@ const VideoPlayer = () => {
             
             // Update API endpoint to match backend routes
             const response = await axios.delete(
-                `http://localhost:5000/api/courses/comment/${commentId}`,
+                getApiUrl(`/api/courses/comment/${commentId}`),
                 {
                     headers: { Authorization: `Bearer ${token}` }
                 }
@@ -713,7 +708,7 @@ const VideoPlayer = () => {
             
             // Update API endpoint to match backend routes
             const response = await axios.patch(
-                `http://localhost:5000/api/courses/comment/${editingComment.id}`,
+                getApiUrl(`/api/courses/comment/${editingComment.id}`),
                 {
                     comment_text: editCommentText
                 },
@@ -870,11 +865,12 @@ const VideoPlayer = () => {
         visible: { opacity: 1, height: "auto", transition: { duration: 0.3, ease: "easeInOut" } },
     };
 
-    // Add a helper function to properly format the video URL
-    const formatVideoUrl = (videoPath) => {
-        if (!videoPath) return null;
-        if (videoPath.startsWith('http')) return videoPath;
-        return `http://localhost:5000/${videoPath.replace(/^\//, '')}`;
+    // Update the getVideoSrc function to use our utility
+    const getVideoSrc = (videoPath) => {
+        if (!videoPath) return "";
+        
+        // Use our utility function to get the full URL
+        return getResourceUrl(videoPath);
     };
 
     // Add the loadVideoProgress function to fetch progress when switching videos
@@ -897,7 +893,7 @@ const VideoPlayer = () => {
             console.log("Fetching video progress for: ", { userId, courseId, videoId });
 
             const response = await axios.get(
-                `http://localhost:5000/api/courses/video/progress/${userId}/${courseId}/${videoId}`,
+                getApiUrl(`/api/courses/video/progress/${userId}/${courseId}/${videoId}`),
                 {
                     headers: { Authorization: `Bearer ${token}` }
                 }
@@ -995,7 +991,7 @@ const VideoPlayer = () => {
         };
 
         // Validate video URL
-        const formattedUrl = formatVideoUrl(normalizedVideo.videoUrl);
+        const formattedUrl = getVideoSrc(normalizedVideo.videoUrl);
         if (!formattedUrl) {
             console.error("Invalid video URL:", normalizedVideo.videoUrl);
             setVideoError("Invalid video URL. Please try another video.");
@@ -1059,7 +1055,7 @@ const VideoPlayer = () => {
                 
                 // Include user_id explicitly in the request body
                 const response = await axios.patch(
-                    `http://localhost:5000/api/courses/rating/${courseData._id}`,
+                    getApiUrl(`/api/courses/rating/${courseData._id}`),
                     {
                         user_id: userId,
                         rating: selectedRating
@@ -1084,7 +1080,7 @@ const VideoPlayer = () => {
                 // Submit new rating
                 console.log("Submitting new rating:", selectedRating);
                 const response = await axios.post(
-                    'http://localhost:5000/api/courses/rating',
+                    getApiUrl('/api/courses/rating'),
                     {
                         user_id: userId,
                         course_id: courseData._id,
@@ -1129,7 +1125,7 @@ const VideoPlayer = () => {
         try {
             // Fetch updated average rating
             const avgResponse = await axios.get(
-                `http://localhost:5000/api/common/rating/${courseId}`,
+                getApiUrl(`/common/rating/${courseId}`),
                 {
                     headers: { Authorization: `Bearer ${token}` }
                 }
@@ -1327,10 +1323,7 @@ const VideoPlayer = () => {
                         {isLoading ? (
                             <Spinner animation="border" variant="light" size="sm" />
                         ) : (
-
                         <CircularProgressbar
-
-
                                 value={courseProgress || 0}
                                 text={`${Math.round(courseProgress || 0)}%`}
                                 styles={buildStyles({ 
@@ -1408,13 +1401,11 @@ const VideoPlayer = () => {
                                 )}
                                 
                                 {currentLesson?.videoUrl || currentLesson?.video_url ? (
-
                         <video
                             ref={videoRef}
                             controls
                             width="100%"
                             style={{ borderRadius: "10px" }}
-
                                         onTimeUpdate={handleTimeUpdate}
                                         onWaiting={() => setVideoLoading(true)}
                                         onCanPlay={() => {
@@ -1444,7 +1435,7 @@ const VideoPlayer = () => {
                                                         const userId = tokenPayload.id;
                                                         
                                                         axios.get(
-                                                            `http://localhost:5000/api/courses/video/progress/${userId}/${courseData._id}/${currentLesson._id}`,
+                                                            getApiUrl(`/api/courses/video/progress/${userId}/${courseData._id}/${currentLesson._id}`),
                                                             { headers: { Authorization: `Bearer ${token}` } }
                                                         )
                                                         .then(response => {
@@ -1469,14 +1460,11 @@ const VideoPlayer = () => {
                                         }}
                                     >
                                         <source 
-                                            src={formatVideoUrl(currentLesson.videoUrl || currentLesson.video_url)}
+                                            src={getVideoSrc(currentLesson.videoUrl || currentLesson.video_url)}
                                             type="video/mp4"
                                         />
                                         Your browser does not support the video tag.
-
                         </video>
-
-
                                 ) : (
                                     <div style={{
                                         height: "300px",
@@ -1484,10 +1472,7 @@ const VideoPlayer = () => {
                                         justifyContent: "center",
                                         alignItems: "center",
                                         backgroundColor: "#000",
-
                                     color: "white",
-
-
                                         borderRadius: "10px"
                                     }}>
                                         No video source available
@@ -1519,10 +1504,7 @@ const VideoPlayer = () => {
                                 ) : (
                                     "No video available for this lesson"
                                 )}
-
                         </div>
-
-
                         )}
 
                         {/* Previous Button */}
@@ -1784,7 +1766,6 @@ const VideoPlayer = () => {
                                                         <div
                                                             key={video._id || videoIndex}
                                                             onClick={() => handleVideoNavigation(video)}
-
                                                         style={{
                                                                 backgroundColor: currentLesson?._id === video._id ? "#e9f0ff" : "transparent",
                                                                 borderLeft: currentLesson?._id === video._id ? "3px solid #0d6efd" : "none",
@@ -1793,7 +1774,6 @@ const VideoPlayer = () => {
                                                                 cursor: "pointer",
                                                                 borderRadius: "4px",
                                                             display: "flex",
-
                                                                 flexDirection: "column",
                                                                 transition: "background-color 0.2s ease"
                                                             }}
@@ -1801,10 +1781,7 @@ const VideoPlayer = () => {
                                                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                                                 <span>
                                                                     <CameraVideo
-
                                                             className="me-2"
-
-
                                                                         style={{ color: currentLesson?._id === video._id ? "#0d6efd" : "#666" }}
                                                                     />
                                                                     {video.title || video.video_title || `Video ${videoIndex + 1}`}
@@ -1812,10 +1789,7 @@ const VideoPlayer = () => {
                                                                 {completedLessons.has(video._id) && (
                                                                     <span className="text-success">✓</span>
                                                                 )}
-
                                                     </div>
-
-
                                                             {/* Progress bar for each video */}
                                                             {progressPercent > 0 && (
                                                                 <div style={{ 
