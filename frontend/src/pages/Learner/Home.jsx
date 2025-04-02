@@ -99,6 +99,7 @@ const Home = () => {
       {/* Search Input */}
       <Row className="mb-4 align-items-center">
         <Col md={12}>
+
           <InputGroup
             style={{
               width: "100%",
@@ -110,6 +111,7 @@ const Home = () => {
             }}
             className="search-bar"
           >
+
             <InputGroup.Text style={{ background: "white", border: "none" }}>
               <FaSearch />
             </InputGroup.Text>
@@ -125,6 +127,7 @@ const Home = () => {
                 outline: "none",
                 boxShadow: "none",
               }}
+
             />
           </InputGroup>
         </Col>

@@ -114,7 +114,10 @@ const CourseShow = () => {
                 const response = await axios.get(
                     `http://localhost:5000/api/courses/enrollment/${course._id}`,
                     {
+
                         headers: {Authorization:`Bearer ${token}`}
+
+
                     }
                 );
 

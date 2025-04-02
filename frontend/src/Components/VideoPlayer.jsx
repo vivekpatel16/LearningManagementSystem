@@ -1327,7 +1327,10 @@ const VideoPlayer = () => {
                         {isLoading ? (
                             <Spinner animation="border" variant="light" size="sm" />
                         ) : (
+
                         <CircularProgressbar
+
+
                                 value={courseProgress || 0}
                                 text={`${Math.round(courseProgress || 0)}%`}
                                 styles={buildStyles({ 
@@ -1405,11 +1408,13 @@ const VideoPlayer = () => {
                                 )}
                                 
                                 {currentLesson?.videoUrl || currentLesson?.video_url ? (
+
                         <video
                             ref={videoRef}
                             controls
                             width="100%"
                             style={{ borderRadius: "10px" }}
+
                                         onTimeUpdate={handleTimeUpdate}
                                         onWaiting={() => setVideoLoading(true)}
                                         onCanPlay={() => {
@@ -1468,7 +1473,10 @@ const VideoPlayer = () => {
                                             type="video/mp4"
                                         />
                                         Your browser does not support the video tag.
+
                         </video>
+
+
                                 ) : (
                                     <div style={{
                                         height: "300px",
@@ -1476,7 +1484,10 @@ const VideoPlayer = () => {
                                         justifyContent: "center",
                                         alignItems: "center",
                                         backgroundColor: "#000",
+
                                     color: "white",
+
+
                                         borderRadius: "10px"
                                     }}>
                                         No video source available
@@ -1508,7 +1519,10 @@ const VideoPlayer = () => {
                                 ) : (
                                     "No video available for this lesson"
                                 )}
+
                         </div>
+
+
                         )}
 
                         {/* Previous Button */}
@@ -1770,6 +1784,7 @@ const VideoPlayer = () => {
                                                         <div
                                                             key={video._id || videoIndex}
                                                             onClick={() => handleVideoNavigation(video)}
+
                                                         style={{
                                                                 backgroundColor: currentLesson?._id === video._id ? "#e9f0ff" : "transparent",
                                                                 borderLeft: currentLesson?._id === video._id ? "3px solid #0d6efd" : "none",
@@ -1778,6 +1793,7 @@ const VideoPlayer = () => {
                                                                 cursor: "pointer",
                                                                 borderRadius: "4px",
                                                             display: "flex",
+
                                                                 flexDirection: "column",
                                                                 transition: "background-color 0.2s ease"
                                                             }}
@@ -1785,7 +1801,10 @@ const VideoPlayer = () => {
                                                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                                                 <span>
                                                                     <CameraVideo
+
                                                             className="me-2"
+
+
                                                                         style={{ color: currentLesson?._id === video._id ? "#0d6efd" : "#666" }}
                                                                     />
                                                                     {video.title || video.video_title || `Video ${videoIndex + 1}`}
@@ -1793,7 +1812,10 @@ const VideoPlayer = () => {
                                                                 {completedLessons.has(video._id) && (
                                                                     <span className="text-success">✓</span>
                                                                 )}
+
                                                     </div>
+
+
                                                             {/* Progress bar for each video */}
                                                             {progressPercent > 0 && (
                                                                 <div style={{ 

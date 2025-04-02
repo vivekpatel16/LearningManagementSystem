@@ -1,6 +1,6 @@
 const Chapter=require("../models/chapterModel");
 const Course=require("../models/coursesInfoModel");
-const VideoInfo=require("../models/VideoModel");
+const videoUser=require("../models/videoUserModel");
 exports.addChapter=async(req,res)=>
 {
     try{
@@ -82,7 +82,7 @@ exports.deleteChapter=async(req,res)=>
             return res.status(404).json({message:"chapter not found"});
         }
         await Chapter.findByIdAndDelete(chapter_id);
-        await VideoInfo.deleteMany({chapter_id:chapter_id});
+        await videoUser.deleteMany({chapter_id:chapter_id});
         
         return res.status(200).json({message:"chapter deleted successfully"});
 
