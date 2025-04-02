@@ -33,6 +33,14 @@ common_API.interceptors.request.use((req) => {
       // Perform basic token validation
       const tokenPayload = JSON.parse(atob(token.split('.')[1]));
       
+      // Basic expiration check
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (tokenPayload.exp && tokenPayload.exp < currentTime) {
+        console.error("Token expired");
+        // Don't throw - let the request proceed and be rejected by server
+        // This avoids redirect loops
+      }
+      
       // Add token to header
       req.headers.Authorization = `Bearer ${token}`;
     } catch (error) {
@@ -55,6 +63,8 @@ common_API.interceptors.response.use(
     if (!isRedirecting && error.response && (error.response.status === 401 || error.response.status === 403)) {
       isRedirecting = true;
       
+      console.log("Authentication error detected, redirecting to login page");
+      
       // Clear localStorage directly to prevent any manipulation
       localStorage.removeItem("user");
       localStorage.removeItem("token");
@@ -62,10 +72,10 @@ common_API.interceptors.response.use(
       // Dispatch logout action
       store.dispatch(logout());
       
-      // Redirect to login page
+      // Redirect to login page with a hard refresh
       window.location.href = "/";
       
-      // Reset flag after redirect (though this won't execute)
+      // Reset flag after redirect attempt
       setTimeout(() => {
         isRedirecting = false;
       }, 1000);
