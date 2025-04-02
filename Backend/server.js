@@ -12,7 +12,12 @@ connectDb();
 
 const app = express();
 
-app.use(cors({ origin: 'https://learningmanagementsystem-6yfw.onrender.com/' , credentials: true }));
+// app.use(cors({ origin: 'https://learningmanagementsystem-6yfw.onrender.com/' , credentials: true }));
+app.use(cors({
+    origin: ["https://learningmanagementsystem-6yfw.onrender.com"], // Allow frontend domain
+    methods: ["GET", "POST", "PATCH", "DELETE"],
+    credentials: true
+}));
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ limit: '500mb', extended: true }));
 app.use("/uploads",express.static("uploads"));
