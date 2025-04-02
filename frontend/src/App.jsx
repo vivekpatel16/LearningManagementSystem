@@ -227,7 +227,19 @@ function App() {
       {user && <Sidebar />}
       <Routes>
         {/* Authentication Routes */}
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={
+          user ? (
+            <Navigate to={
+              user.role === "admin" 
+                ? "/admin/dashboard" 
+                : user.role === "instructor" 
+                  ? "/instructor/dashboard" 
+                  : "/home"
+            } replace />
+          ) : (
+            <Login />
+          )
+        } />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
