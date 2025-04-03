@@ -1,133 +1,263 @@
-import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import './css/App.css';
-import Header from './components/Header';
-import Login from './pages/Login';
-import Dashboard from './components/Dashboard';
-import ReportPage from './components/ReportPage';
-import ClientList from './components/ClientList';
-import ClientDocuments from './components/ClientDocuments';
-import ClientEdit from './components/ClientEdit';
-import ReminderSettings from './components/ReminderSettings';
-import DocumentStatus from './components/DocumentStatus';
-import UserManagement from './pages/UserManagement';
-import CommunicationLogs from './components/CommunicationLogs';
-import { 
-  selectToken, 
-  selectUser,
-  selectLastPath, 
-  selectInitialDataLoaded,
-  setLastPath,
-  logout,
-  verifyAuth
-} from './redux/authSlice';
+import { useEffect, useState } from "react";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import Sidebar from "./Components/Sidebar";
+import Login from "./pages/Auth/Login";
+import ForgotPassword from "./pages/Auth/ForgotPassword";
+import ResetPassword from "./pages/Auth/ResetPassword";
+import AdminDashboard from "./pages/Admin/Dashboard";
+import UserManagement from "./pages/Admin/UserManagement";
+import AdminCourseManagement from "./pages/Admin/CourseManagement";
+import Reports from "./pages/Admin/Reports";
+import InstructorDashboard from "./pages/Instructor/Dashboard";
+import InstructorCourses from "./pages/Instructor/CourseManagement";
+import MyCourses from "./pages/Instructor/MyCourses";
+import CourseDetail from "./pages/Instructor/CourseDetails";
+import Home from "./pages/Learner/Home";
+import MyLearning from "./pages/Learner/MyLearning";
+import Wishlist from "./pages/Learner/Wishlist";
+import Courses from "./pages/Learner/Courses";
+import CourseShow from "./pages/Learner/CourseShow";
+import Category from "./pages/Admin/Category";
+
+
+import VideoPlayer from "./Components/VideoPlayer";
+import Header from "./Components/Header";
+import Profile from "./Components/Profile";
+import { useSelector, useDispatch } from "react-redux";
+import { logout, verifyAuth } from "./features/auth/authSlice";
+
+// Create a more secure PrivateRoute component that includes authentication verification
+const PrivateRoute = ({ element, roles }) => {
+  const { user, loading } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [verifying, setVerifying] = useState(true);
+  
+  useEffect(() => {
+    const verifyUserAuth = async () => {
+      try {
+        // If no user in Redux state, redirect to login
+        if (!user) {
+          dispatch(logout());
+          navigate("/");
+          return;
+        }
+        
+        // Verify token with server (limit verification frequency to prevent loops)
+        const storedUser = JSON.parse(localStorage.getItem("user"));
+        const token = localStorage.getItem("token");
+        
+        // Skip verification if no token or user
+        if (!token || !storedUser) {
+          dispatch(logout());
+          navigate("/");
+          return;
+        }
+        
+        // Check for role manipulation by comparing localStorage role with the role in the token
+        try {
+          const jwtPayload = JSON.parse(atob(token.split('.')[1]));
+          
+          // If roles don't match, logout immediately
+          if (storedUser.role !== jwtPayload.role) {
+            dispatch(logout());
+            navigate("/");
+            return;
+          }
+          
+          // Check if user has necessary role to access the route
+          if (roles && !roles.includes(storedUser.role)) {
+            // If user doesn't have the needed role, redirect to their appropriate dashboard
+            if (storedUser.role === "admin") navigate("/admin/dashboard");
+            else if (storedUser.role === "instructor") navigate("/instructor/dashboard");
+            else if (storedUser.role === "user") navigate("/home");
+            return;
+          }
+          
+          setVerifying(false);
+        } catch (error) {
+          // Invalid token format
+          dispatch(logout());
+          navigate("/");
+        }
+      } catch (error) {
+        console.error("Authentication error in PrivateRoute:", error);
+        dispatch(logout());
+        navigate("/");
+      }
+    };
+    
+    verifyUserAuth();
+  }, [dispatch, navigate, roles, user]);
+  
+  // Show loading spinner while verifying to prevent the flash of content
+  if (verifying || loading) {
+    return <div className="d-flex justify-content-center align-items-center vh-100">
+      <div className="spinner-border text-primary" role="status">
+        <span className="visually-hidden">Loading...</span>
+      </div>
+    </div>;
+  }
+  
+  return element;
+};
 
 function App() {
-  return (
-    <div className="App">
-      <Header />
-      <div className="content-container">
-        <AppRoutes />
-      </div>
-      <ToastContainer 
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
-    </div>
-  );
-}
-
-function AppRoutes() {
-  const token = useSelector(selectToken);
-  const user = useSelector(selectUser);
-  const lastPath = useSelector(selectLastPath);
-  const initialDataLoaded = useSelector(selectInitialDataLoaded);
-  const dispatch = useDispatch();
-  
-  const location = useLocation();
+  const { user, loading } = useSelector((state) => state.auth);
   const navigate = useNavigate();
+  const location = useLocation();
+  const dispatch = useDispatch();
   const [initializing, setInitializing] = useState(true);
   
-  // Track current path for restoring on reload/login
+  // Initial auth check - runs once at startup
   useEffect(() => {
-    if (token && location.pathname !== '/login') {
-      dispatch(setLastPath(location.pathname));
-    }
-  }, [token, location.pathname, dispatch]);
-  
-  // Verify authentication on app load
-  useEffect(() => {
-    const verifyAuthentication = async () => {
-      // Skip verification for login page
-      if (location.pathname === '/login') {
+    const initialAuthCheck = async () => {
+      // Allow no-auth routes without verification
+      if (
+        location.pathname === "/" || 
+        location.pathname === "/forgot-password" || 
+        location.pathname === "/reset-password"
+      ) {
         setInitializing(false);
         return;
       }
       
-      // If no token exists, redirect to login
-      if (!token) {
+      const token = localStorage.getItem("token");
+      const storedUser = JSON.parse(localStorage.getItem("user"));
+      
+      if (!token || !storedUser) {
+        dispatch(logout());
+        navigate("/");
         setInitializing(false);
         return;
       }
       
       try {
-        // Verify token with server
-        await dispatch(verifyAuth()).unwrap();
+        // Perform a lightweight token check without making API calls
+        const jwtPayload = JSON.parse(atob(token.split('.')[1]));
+        
+        // Check token expiration
+        const currentTime = Math.floor(Date.now() / 1000);
+        if (jwtPayload.exp && jwtPayload.exp < currentTime) {
+          dispatch(logout());
+          navigate("/");
+          setInitializing(false);
+          return;
+        }
+        
+        // Check role consistency
+        if (storedUser.role !== jwtPayload.role) {
+          dispatch(logout());
+          navigate("/");
+          setInitializing(false);
+          return;
+        }
+        
+        // Only verify with server if needed (e.g., first load)
+        if (!user) {
+          try {
+            await dispatch(verifyAuth()).unwrap();
+          } catch (error) {
+            dispatch(logout());
+            navigate("/");
+          }
+        }
+        
         setInitializing(false);
       } catch (error) {
-        console.error('Authentication verification failed:', error);
-        // Already handled in the slice
+        console.error("Initial auth check failed:", error);
+        dispatch(logout());
+        navigate("/");
         setInitializing(false);
       }
     };
     
-    verifyAuthentication();
-  }, [token, dispatch, location.pathname]);
+    initialAuthCheck();
+  }, [dispatch, navigate, location.pathname, user]);
   
-  // Redirect to last path on login
+  // Immediate sync check for token/user validity on route changes (lightweight check)
   useEffect(() => {
-    if (token && initialDataLoaded && location.pathname === '/login') {
-      navigate(lastPath);
+    // Skip for auth routes or during initialization
+    if (
+      initializing ||
+      location.pathname === "/" || 
+      location.pathname === "/forgot-password" || 
+      location.pathname === "/reset-password"
+    ) {
+      return;
     }
-  }, [token, initialDataLoaded, lastPath, location.pathname, navigate]);
+    
+    const token = localStorage.getItem("token");
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    
+    // Basic check without API calls
+    if (!token || !storedUser) {
+      dispatch(logout());
+      navigate("/");
+      return;
+    }
+    
+    // Check for role manipulation by comparing localStorage role with the role in token
+    try {
+      // Decode JWT payload
+      const jwtPayload = JSON.parse(atob(token.split('.')[1]));
+      
+      // If roles don't match, logout immediately
+      if (storedUser.role !== jwtPayload.role) {
+        dispatch(logout());
+        navigate("/");
+      }
+    } catch (error) {
+      // Invalid token format
+      dispatch(logout());
+      navigate("/");
+    }
+  }, [location.pathname, dispatch, navigate, initializing]);
 
-  // Show loading state during initialization
+  // Don't render anything until initial auth check completes
   if (initializing) {
-    return (
-      <div className="loading-container">
-        <div className="spinner"></div>
-        <p>Loading application...</p>
+    return <div className="d-flex justify-content-center align-items-center vh-100">
+      <div className="spinner-border text-primary" role="status">
+        <span className="visually-hidden">Loading...</span>
       </div>
-    );
+    </div>;
   }
 
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/" element={token ? <Dashboard /> : <Navigate to="/login" />} />
-      <Route path="/reports" element={token ? <ReportPage /> : <Navigate to="/login" />} />
-      <Route path="/status" element={token ? <DocumentStatus /> : <Navigate to="/login" />} />
-      
-      {/* Client management routes */}
-      <Route path="/clients" element={token ? <ClientList /> : <Navigate to="/login" />} />
-      <Route path="/client/:clientId/documents" element={token ? <ClientDocuments /> : <Navigate to="/login" />} />
-      <Route path="/client/:clientId/edit" element={token ? <ClientEdit /> : <Navigate to="/login" />} />
-      <Route path="/settings" element={token ? <ReminderSettings /> : <Navigate to="/login" />} />
-      <Route path="/users" element={token ? <UserManagement /> : <Navigate to="/login" />} />
-      <Route path="/logs" element={token ? <CommunicationLogs /> : <Navigate to="/login" />} />
-      
-      <Route path="*" element={<Navigate to="/" />} />
-    </Routes>
+    <>
+      <Header />
+      {user && <Sidebar />}
+      <Routes>
+        {/* Authentication Routes */}
+        <Route path="/" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+
+        {/* Admin Routes */}
+        <Route path="/admin/dashboard" element={<PrivateRoute element={<AdminDashboard />} roles={["admin"]} />} />
+        <Route path="/admin/users" element={<PrivateRoute element={<UserManagement />} roles={["admin"]} />} />
+        <Route path="/admin/courses" element={<PrivateRoute element={<AdminCourseManagement />} roles={["admin"]} />} />
+        <Route path="/admin/reports" element={<PrivateRoute element={<Reports />} roles={["admin"]} />} />
+        <Route path="/admin/category" element={<PrivateRoute element={<Category />} roles={["admin"]} />} />
+        
+        {/* Instructor Routes */}
+        <Route path="/instructor/dashboard" element={<PrivateRoute element={<InstructorDashboard />} roles={["instructor"]} />} />
+        <Route path="/instructor/courses" element={<PrivateRoute element={<InstructorCourses />} roles={["instructor"]} />} />
+        <Route path="/instructor/mycourses" element={<PrivateRoute element={<MyCourses />} roles={["instructor"]} />} />
+        <Route path="/instructor/mycourses/coursedetails" element={<PrivateRoute element={<CourseDetail />} roles={["instructor"]} />} />
+        
+        {/* User (Learner) Routes */}
+        <Route path="/home" element={<PrivateRoute element={<Home />} roles={["user"]} />} />
+        <Route path="/my-learning" element={<PrivateRoute element={<MyLearning />} roles={["user"]} />} />
+        <Route path="/wishlist" element={<PrivateRoute element={<Wishlist />} roles={["user"]} />} />
+        <Route path="/courses" element={<PrivateRoute element={<Courses />} roles={["user"]} />} />
+        <Route path="/courses/courseshow/:courseId" element={<PrivateRoute element={<CourseShow />} roles={["user"]} />} />
+        <Route path="/video-player" element={<PrivateRoute element={<VideoPlayer />} roles={["user"]} />} />
+
+        {/* Shared Profile Route */}
+        <Route path="/profile" element={<PrivateRoute element={<Profile />} roles={["admin", "instructor", "user"]} />} />
+      </Routes>
+    </>
   );
 }
 
