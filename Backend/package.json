@@ -131,9 +131,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon server.js",
     "server": "cd backend && nodemon server.js",
-    "client": "cd frontend && npm start",
-    "build": "react-scripts build",
-  "postbuild": "mv build/index.html build/200.html"
+    "client": "cd frontend && npm start"
   },
   "keywords": [],
   "author": "",
