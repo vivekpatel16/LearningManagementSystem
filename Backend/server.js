@@ -1,6 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors=require("cors");
+const path = require("path");
 const connectDb = require('./config/db');
 const commonRoutes=require("./routes/commonRoutes");
 const adminRoutes=require("./routes/adminRoutes");
@@ -17,7 +18,13 @@ app.use(cors({
     methods: ["GET", "POST", "PATCH", "DELETE"],
     credentials: true
 }));
+const __dirname1 = path.resolve();
+app.use(express.static(path.join(__dirname1, "/frontend/build")));
 
+// Handle React Routes
+app.get("*", (req, res) => {
+    res.sendFile(path.resolve(__dirname1, "frontend", "build", "index.html"));
+});
 
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ limit: '500mb', extended: true }));
