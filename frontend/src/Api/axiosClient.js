@@ -1,57 +1,54 @@
 import axios from 'axios';
 import API_CONFIG from '../config/apiConfig';
+import { BACKEND_URL } from '../utils/apiUtils';
 
-// Create a custom axios instance for API requests
+// Create an axios instance with production URL
 const axiosClient = axios.create({
-  baseURL: API_CONFIG.BASE_URL,
-  timeout: 10000,
+  baseURL: BACKEND_URL, // Use direct backend URL
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
-  }
+  },
+  timeout: 15000, // 15 second timeout
 });
 
-// Add a request interceptor to handle CORS
+// Request interceptor for adding the auth token
 axiosClient.interceptors.request.use(
   (config) => {
-    // Add CORS headers to request
-    config.headers['Access-Control-Allow-Origin'] = '*';
-    
-    // Add auth token if available
     const token = localStorage.getItem('token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
     
-    console.log('Request URL:', config.url);
-    
+    console.log(`Making ${config.method.toUpperCase()} request to: ${config.baseURL}${config.url}`);
     return config;
   },
   (error) => {
-    console.error('Request interceptor error:', error);
+    console.error('Request error:', error);
     return Promise.reject(error);
   }
 );
 
-// Add a response interceptor for better error handling
+// Response interceptor for handling common errors
 axiosClient.interceptors.response.use(
   (response) => {
+    console.log(`Successful response from: ${response.config.url}`);
     return response;
   },
   (error) => {
-    console.error('API error:', error.message);
-    
-    // Handle different types of errors
     if (error.response) {
-      // The request was made and the server responded with an error status
-      console.error('Response error data:', error.response.data);
-      console.error('Response error status:', error.response.status);
+      console.error('Response error:', error.response.status, error.response.data);
+      
+      // Handle auth errors
+      if (error.response.status === 401 || error.response.status === 403) {
+        console.log('Authentication error - clearing local storage');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        // Don't redirect here, let the component handle it
+      }
     } else if (error.request) {
-      // The request was made but no response was received
-      console.error('No response received:', error.request);
+      console.error('Network error - no response received:', error.request);
     } else {
-      // Something happened in setting up the request
-      console.error('Request setup error:', error.message);
+      console.error('Error creating request:', error.message);
     }
     
     return Promise.reject(error);

@@ -258,6 +258,7 @@ function App() {
         
         {/* User (Learner) Routes */}
         <Route path="/home" element={<PrivateRoute element={<Home />} roles={["user"]} />} />
+        <Route path="/learner/home" element={<PrivateRoute element={<Home />} roles={["user"]} />} />
         <Route path="/my-learning" element={<PrivateRoute element={<MyLearning />} roles={["user"]} />} />
         <Route path="/wishlist" element={<PrivateRoute element={<Wishlist />} roles={["user"]} />} />
         <Route path="/courses" element={<PrivateRoute element={<Courses />} roles={["user"]} />} />

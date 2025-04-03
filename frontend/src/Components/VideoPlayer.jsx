@@ -11,6 +11,7 @@ import axios from "axios";
 import { toast } from "react-hot-toast";
 import common_API from "../Api/commonApi";
 import { getApiUrl, getResourceUrl } from "../utils/apiUtils";
+import courseApi from "../Api/courseApi";
 
 const VideoPlayer = () => {
     const location = useLocation();
@@ -82,7 +83,7 @@ const VideoPlayer = () => {
 
             // Fetch chapters for the course
             const chaptersResponse = await axios.get(getApiUrl(`/api/courses/chapter/${courseId}`), {
-                headers: { Authorization: `Bearer ${token}` }
+                    headers: { Authorization: `Bearer ${token}` }
             });
             
             if (chaptersResponse.status === 200) {
@@ -93,7 +94,7 @@ const VideoPlayer = () => {
                     chaptersData.map(async (chapter) => {
                         try {
                             const videosResponse = await axios.get(getApiUrl(`/api/courses/video/${chapter._id}`), {
-                                headers: { Authorization: `Bearer ${token}` }
+                                    headers: { Authorization: `Bearer ${token}` }
                             });
                             
                             return {
@@ -420,11 +421,11 @@ const VideoPlayer = () => {
         // It will be updated when saveVideoProgress is called
 
         // Save video progress to backend
-        if (currentLesson?._id && courseData?._id && percent > 0) {
-            // Save progress every 5 seconds or when reaching important thresholds
+            if (currentLesson?._id && courseData?._id && percent > 0) {
+                // Save progress every 5 seconds or when reaching important thresholds
             if (Math.floor(currentTime) % 5 === 0 || percent >= 95) {
                 const isCompleted = percent >= 95;
-                saveVideoProgress(currentTime, isCompleted);
+                saveVideoProgress(isCompleted);
                 
                 // Mark video as completed if watched more than 95%
                 if (isCompleted && !completedLessons.has(currentLesson._id)) {
@@ -435,92 +436,48 @@ const VideoPlayer = () => {
     };
 
     // Function to save video progress to the backend
-    const saveVideoProgress = async (currentTime, completed) => {
-        try {
-            const token = localStorage.getItem('token');
-            if (!token) return;
-
-            const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-            const userId = tokenPayload.id;
-            
-            if (!courseData?._id || !currentLesson?._id) {
-                console.error("Missing courseData or currentLesson data");
-                return;
-            }
-            
-            // Calculate video progress percentage
-            let progressPercent = 0;
-            if (videoRef.current && videoRef.current.duration) {
-                progressPercent = (currentTime / videoRef.current.duration) * 100;
-            }
-            
-            console.log("Saving video progress:", {
-                user_id: userId,
-                course_id: courseData._id,
-                video_id: currentLesson._id,
-                current_time: currentTime,
-                progress_percent: progressPercent,
-                completed: completed
-            });
-
-            // Call the backend API to update video progress
-            const response = await axios.post(
-                getApiUrl('/api/courses/video/progress'),
-                {
-                    user_id: userId,
-                    course_id: courseData._id,
-                    video_id: currentLesson._id,
-                    current_time: currentTime,
-                    progress_percent: progressPercent,
-                    completed: completed
-                },
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
-
-            if (response.data && response.data.success) {
-                console.log("Video progress saved successfully:", response.data);
+    const saveVideoProgress = (completed = false) => {
+        if (!currentLesson?._id || !courseData?._id) {
+            console.error("Missing courseData or currentLesson data");
+            return;
+        }
+        
+        const progress = videoRef.current ? videoRef.current.currentTime : 0;
+        console.log('Saving video progress:', progress, 'Completed:', completed);
+        
+        const progressData = {
+            userId: localStorage.getItem('token')?.split('.')[1]?.split('|')[0],
+            courseId: courseData._id,
+            videoId: currentLesson._id,
+            progress,
+            completed,
+            course_progress: courseProgress
+        };
+        
+        // Try to save progress directly
+        courseApi.directSaveVideoProgress(progressData)
+            .then(response => {
+                console.log('Progress saved successfully:', response);
                 
-                // Update completedLessons based on server response for consistency
-                if (response.data.data && response.data.data.completed) {
-                    // Add to completed lessons if it's not already there
-                    if (!completedLessons.has(currentLesson._id)) {
-                        setCompletedLessons(prev => new Set([...prev, currentLesson._id]));
-                    }
-                } else if (response.data.data && !response.data.data.completed) {
-                    // Remove from completed lessons if it's there
-                    if (completedLessons.has(currentLesson._id)) {
-                        setCompletedLessons(prev => {
-                            const newSet = new Set([...prev]);
-                            newSet.delete(currentLesson._id);
-                            return newSet;
-                        });
-                    }
-                }
-                
-                // Update progress map with saved progress
+                // Update local state with the new progress
                 setVideoProgressMap(prev => {
                     const newMap = new Map(prev);
                     newMap.set(currentLesson._id, {
-                        watchedTime: currentTime,
+                        watchedTime: progress,
                         duration: videoRef.current?.duration || 0,
-                        percent: progressPercent
+                        percent: progress > 0 ? (progress / videoRef.current?.duration) * 100 : 0
                     });
                     return newMap;
                 });
                 
-                // Use the course_progress from the server response if available
-                if (response.data.data.course_progress !== undefined) {
-                    setCourseProgress(response.data.data.course_progress);
-                } else {
-                    // Fallback to local calculation if server doesn't provide course progress
-                    setCourseProgress(calculateCourseProgress());
+                // If the video is completed, update the completed lessons state
+                if (completed) {
+                    setCompletedLessons(prev => new Set([...prev, currentLesson._id]));
                 }
-            }
-        } catch (error) {
-            console.error("Error saving video progress:", error);
-        }
+            })
+            .catch(error => {
+                console.error('Error saving video progress:', error);
+            });
     };
 
     // Toggle chapter visibility
@@ -875,91 +832,68 @@ const VideoPlayer = () => {
 
     // Add the loadVideoProgress function to fetch progress when switching videos
     const loadVideoProgress = async (videoId) => {
-        try {
-            if (!videoId) {
-                console.error("Invalid videoId provided to loadVideoProgress");
+        console.log('Loading video progress...');
+
+        // Validation
+        if (!videoId) {
+            console.error('No videoId provided for progress loading');
+            return;
+        }
+
+            const token = localStorage.getItem('token');
+            if (!token) {
+            console.error('No authentication token found');
                 return;
             }
 
-            const token = localStorage.getItem('token');
-            if (!token) return;
+        const userData = JSON.parse(localStorage.getItem('user'));
+        if (!userData || !userData.id) {
+            console.error('No user data found in localStorage');
+                return;
+            }
 
-            const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-            const userId = tokenPayload.id;
-            const courseId = courseData?._id;
+        const userId = userData.id;
+        const courseId = courseData?._id;
+        console.log('Loading progress for video:', videoId);
 
-            if (!userId || !courseId) return;
-
-            console.log("Fetching video progress for: ", { userId, courseId, videoId });
-
-            const response = await axios.get(
-                getApiUrl(`/api/courses/video/progress/${userId}/${courseId}/${videoId}`),
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
-
-            console.log("Video progress response:", response.data);
-
-            if (response.data.success && response.data.data) {
-                const { current_time, completed, progress_percent, course_progress } = response.data.data;
+        // Attempt to fetch progress directly
+        courseApi.directGetVideoProgress(userId, courseId, videoId)
+            .then(response => {
+                console.log('Progress loading response:', response);
                 
-                console.log("Setting video time to:", current_time);
-                
-                // Store the progress data in the map
-                setVideoProgressMap(prev => {
-                    const newMap = new Map(prev);
-                    newMap.set(videoId, {
-                        watchedTime: current_time,
-                        duration: videoRef.current?.duration || 0,
-                        percent: progress_percent || 0
-                    });
-                    return newMap;
-                });
-                
-                // Set progress directly if available
-                if (progress_percent) {
-                    setProgress(progress_percent);
-                }
-                
-                // Mark video as completed if needed - IMPORTANT: use the completed flag from server
-                if (completed) {
-                    setCompletedLessons(prev => {
-                        if (!prev.has(videoId)) {
-                            return new Set([...prev, videoId]);
-                        }
-                        return prev;
-                    });
-                } else {
-                    // If server says it's not completed, make sure to remove it from completedLessons
-                    setCompletedLessons(prev => {
-                        if (prev.has(videoId)) {
-                            const newSet = new Set([...prev]);
-                            newSet.delete(videoId);
-                            return newSet;
-                        }
-                        return prev;
-                    });
-                }
-                
-                // Set video time if possible
-                if (current_time > 0) {
-                    // If video element is already loaded, set time directly
-                    if (videoRef.current && videoRef.current.readyState >= 2) {
-                        console.log("Video already loaded, setting time immediately");
-                        videoRef.current.currentTime = current_time;
+                // Process the progress data
+                if (response) {
+                    // Store the progress data in a map
+                    setVideoProgressMap(prevState => ({
+                        ...prevState,
+                        [videoId]: response.progress
+                    }));
+
+                    // Update the completed lessons
+                    if (response.completed) {
+                        setCompletedLessons(prevState => ({
+                            ...prevState,
+                            [videoId]: true
+                        }));
+                    }
+
+                    // If there's stored progress, set the video time
+                    if (response.progress > 0 && videoRef.current) {
+                        console.log('Setting video time to:', response.progress);
+                        videoRef.current.currentTime = response.progress;
+                    }
+
+                    // If course progress is available from the server, use it
+                    if (response.course_progress !== undefined && response.course_progress !== null) {
+                        console.log('Setting course progress from server:', response.course_progress);
+                        setCourseProgress(response.course_progress);
+                        initialProgressLoaded.current = true;
                     }
                 }
-                
-                // Update course progress from server response if available
-                if (course_progress !== undefined) {
-                    setCourseProgress(course_progress);
-                    initialProgressLoaded.current = true;
-                }
-            }
-        } catch (error) {
-            console.error("Error loading video progress:", error);
-        }
+            })
+            .catch(error => {
+                console.error('Error loading video progress:', error);
+            });
     };
 
     // Update video navigation handler
@@ -976,7 +910,7 @@ const VideoPlayer = () => {
             const currentTime = videoRef.current.currentTime;
             const videoDuration = videoRef.current.duration;
             const completed = (currentTime / videoDuration) * 100 >= 95;
-            saveVideoProgress(currentTime, completed);
+            saveVideoProgress(completed);
         }
         
         // Normalize the video data
@@ -989,7 +923,7 @@ const VideoPlayer = () => {
             chapterTitle: video.chapterTitle,
             ...video
         };
-
+        
         // Validate video URL
         const formattedUrl = getVideoSrc(normalizedVideo.videoUrl);
         if (!formattedUrl) {
@@ -1008,11 +942,11 @@ const VideoPlayer = () => {
         setComments([]);
         
         // Reset video player first to ensure clean state
-        if (videoRef.current) {
-            videoRef.current.pause();
+            if (videoRef.current) {
+                videoRef.current.pause();
             videoRef.current.removeAttribute('src');
-            videoRef.current.load();
-        }
+                videoRef.current.load();
+            }
         
         // Load video progress - do this with a slight delay to ensure state updates
         setTimeout(() => {
@@ -1326,13 +1260,13 @@ const VideoPlayer = () => {
                         <CircularProgressbar
                                 value={courseProgress || 0}
                                 text={`${Math.round(courseProgress || 0)}%`}
-                                styles={buildStyles({ 
-                                    textSize: "30px", 
-                                    pathColor: "#0d6efd", 
-                                    textColor: "white",
-                                    trailColor: "rgba(255,255,255,0.3)" 
-                                })}
-                            />
+                            styles={buildStyles({ 
+                                textSize: "30px", 
+                                pathColor: "#0d6efd", 
+                                textColor: "white",
+                                trailColor: "rgba(255,255,255,0.3)" 
+                            })}
+                        />
                         )}
                     </div>
                     <div style={{ color: "white", fontSize: "0.8rem" }}>
@@ -1406,13 +1340,13 @@ const VideoPlayer = () => {
                             controls
                             width="100%"
                             style={{ borderRadius: "10px" }}
-                                        onTimeUpdate={handleTimeUpdate}
-                                        onWaiting={() => setVideoLoading(true)}
+                                    onTimeUpdate={handleTimeUpdate}
+                                    onWaiting={() => setVideoLoading(true)}
                                         onCanPlay={() => {
                                             setVideoLoading(false);
                                             setVideoError(null);
                                         }}
-                                        onLoadStart={() => {
+                                    onLoadStart={() => {
                                             setVideoLoading(true);
                                             console.log("Video loading started");
                                         }}
@@ -1453,17 +1387,17 @@ const VideoPlayer = () => {
                                             console.log("Video data loaded");
                                             setVideoLoading(false);
                                         }}
-                                        onError={(e) => {
-                                            console.error("Video error:", e);
+                                    onError={(e) => {
+                                        console.error("Video error:", e);
                                             setVideoError("Failed to load video. Please try again.");
                                             setVideoLoading(false);
-                                        }}
-                                    >
-                                        <source 
+                                    }}
+                                >
+                                    <source 
                                             src={getVideoSrc(currentLesson.videoUrl || currentLesson.video_url)}
-                                            type="video/mp4"
-                                        />
-                                        Your browser does not support the video tag.
+                                        type="video/mp4" 
+                                    />
+                                    Your browser does not support the video tag.
                         </video>
                                 ) : (
                                     <div style={{
@@ -1486,7 +1420,7 @@ const VideoPlayer = () => {
                                 justifyContent: "center", 
                                 alignItems: "center", 
                                 height: "300px",
-                                color: "white",
+                                    color: "white",
                                 textAlign: "center",
                                 padding: "20px"
                             }}>
@@ -1771,23 +1705,23 @@ const VideoPlayer = () => {
                                                                 borderLeft: currentLesson?._id === video._id ? "3px solid #0d6efd" : "none",
                                                                 marginBottom: "5px",
                                                             padding: "8px 10px",
-                                                                cursor: "pointer",
+                                                            cursor: "pointer",
                                                                 borderRadius: "4px",
                                                             display: "flex",
                                                                 flexDirection: "column",
                                                                 transition: "background-color 0.2s ease"
-                                                            }}
-                                                        >
+                                                        }}
+                                                    >
                                                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                                                <span>
-                                                                    <CameraVideo
+                                                            <span>
+                                                                <CameraVideo
                                                             className="me-2"
-                                                                        style={{ color: currentLesson?._id === video._id ? "#0d6efd" : "#666" }}
-                                                                    />
-                                                                    {video.title || video.video_title || `Video ${videoIndex + 1}`}
-                                                                </span>
-                                                                {completedLessons.has(video._id) && (
-                                                                    <span className="text-success">✓</span>
+                                                                    style={{ color: currentLesson?._id === video._id ? "#0d6efd" : "#666" }}
+                                                                />
+                                                                {video.title || video.video_title || `Video ${videoIndex + 1}`}
+                                                            </span>
+                                                            {completedLessons.has(video._id) && (
+                                                                <span className="text-success">✓</span>
                                                                 )}
                                                     </div>
                                                             {/* Progress bar for each video */}
@@ -1808,7 +1742,7 @@ const VideoPlayer = () => {
                                                                     }} />
                                                                 </div>
                                                             )}
-                                                        </div>
+                                                    </div>
                                                     );
                                                 })
                                             ) : (

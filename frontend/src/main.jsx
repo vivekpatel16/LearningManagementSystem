@@ -25,23 +25,24 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { Provider } from "react-redux";
 import store from "./features/auth/store";
-import App from "./App";
+import App from "./App.jsx";
 import reportWebVitals from "./reportWebVitals";
-import { testApiConnection } from "./utils/apiTest";
 import API_CONFIG from "./config/apiConfig";
+import { testApiConnection } from "./utils/apiTest";
+
 
 // Log environment config for debugging
 console.log("Environment:", import.meta.env.MODE);
 console.log("API Base URL:", API_CONFIG.BASE_URL);
 
-// Test API connectivity at startup
-// testApiConnection()
-//   .then(isConnected => {
-//     console.log("API connectivity test result:", isConnected ? "CONNECTED" : "FAILED");
-//   })
-//   .catch(error => {
-//     console.error("API connectivity test error:", error);
-//   });
+// Test API connectivity at startup with our improved method
+testApiConnection()
+  .then(isConnected => {
+    console.log("API connectivity test result:", isConnected ? "CONNECTED" : "FAILED");
+  })
+  .catch(error => {
+    console.error("API connectivity test error:", error);
+  });
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
