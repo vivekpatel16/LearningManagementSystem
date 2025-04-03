@@ -14,7 +14,7 @@ const app = express();
 
 // app.use(cors({ origin: 'https://learningmanagementsystem-6yfw.onrender.com/' , credentials: true }));
 app.use(cors({
-    origin: ["http://localhost:5173/"], // Allow frontend domain
+    origin: "http://localhost:5173", // Allow frontend domain
     methods: ["GET", "POST", "PATCH", "DELETE"],
     credentials: true
 }));
