@@ -4,7 +4,7 @@ import { logout } from "../features/auth/authSlice";
 import API_CONFIG from "../config/apiConfig";
 
 const Wishlist_API = axios.create({ 
-  baseURL: `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WISHLIST}` 
+  baseURL: `${API_CONFIG.BASE_URL}${API_CONFIG.WISHLIST}` 
 });
 
 Wishlist_API.interceptors.request.use((req) => {
