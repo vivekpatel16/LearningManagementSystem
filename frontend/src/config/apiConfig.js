@@ -14,6 +14,7 @@ const SECURE_URL = BASE_URL.replace(/^http:/, 'https:');
 
 const API_CONFIG = {
   BASE_URL: SECURE_URL,
+  ADMIN:`${SECURE_URL}/api/admin`,
   USERS_ENDPOINT: `${SECURE_URL}/api/users`,
   COURSES_ENDPOINT: `${SECURE_URL}/api/courses`,
   CATEGORIES_ENDPOINT: `${SECURE_URL}/api/courses/category`,
