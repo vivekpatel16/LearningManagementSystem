@@ -6,7 +6,7 @@ const commonRoutes=require("./routes/commonRoutes");
 const adminRoutes=require("./routes/adminRoutes");
 const coursesRoutes = require("./routes/coursesRoutes");
 const wishlistRoutes=require("./routes/wishlistRoutes");
-
+const path=require("path")
 dotenv.config();
 connectDb();
 
@@ -18,6 +18,12 @@ app.use(cors({
     methods: ["GET", "POST", "PATCH", "DELETE"],
     credentials: true
 }));
+
+app.use(express.static(path.join(__dirname, "build")));
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "build", "index.html"));
+});
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ limit: '500mb', extended: true }));
 app.use("/uploads",express.static("uploads"));
