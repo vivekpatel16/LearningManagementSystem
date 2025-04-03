@@ -18,6 +18,8 @@ import Wishlist from "./pages/Learner/Wishlist";
 import Courses from "./pages/Learner/Courses";
 import CourseShow from "./pages/Learner/CourseShow";
 import Category from "./pages/Admin/Category";
+
+
 import VideoPlayer from "./Components/VideoPlayer";
 import Header from "./Components/Header";
 import Profile from "./Components/Profile";
@@ -227,19 +229,7 @@ function App() {
       {user && <Sidebar />}
       <Routes>
         {/* Authentication Routes */}
-        <Route path="/" element={
-          user ? (
-            <Navigate to={
-              user.role === "admin" 
-                ? "/admin/dashboard" 
-                : user.role === "instructor" 
-                  ? "/instructor/dashboard" 
-                  : "/home"
-            } replace />
-          ) : (
-            <Login />
-          )
-        } />
+        <Route path="/" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
@@ -258,7 +248,6 @@ function App() {
         
         {/* User (Learner) Routes */}
         <Route path="/home" element={<PrivateRoute element={<Home />} roles={["user"]} />} />
-        <Route path="/learner/home" element={<PrivateRoute element={<Home />} roles={["user"]} />} />
         <Route path="/my-learning" element={<PrivateRoute element={<MyLearning />} roles={["user"]} />} />
         <Route path="/wishlist" element={<PrivateRoute element={<Wishlist />} roles={["user"]} />} />
         <Route path="/courses" element={<PrivateRoute element={<Courses />} roles={["user"]} />} />

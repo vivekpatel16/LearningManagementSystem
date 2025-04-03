@@ -7,11 +7,9 @@ import { LuSendHorizontal } from "react-icons/lu";
 import { motion, AnimatePresence } from "framer-motion";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
-import axios from "axios";
+import axiosInstance from '../Api/axiosInstance';
 import { toast } from "react-hot-toast";
 import common_API from "../Api/commonApi";
-import { getApiUrl, getResourceUrl } from "../utils/apiUtils";
-import courseApi from "../Api/courseApi";
 
 const VideoPlayer = () => {
     const location = useLocation();
@@ -82,9 +80,12 @@ const VideoPlayer = () => {
             setCourseData(course);
 
             // Fetch chapters for the course
-            const chaptersResponse = await axios.get(getApiUrl(`/api/courses/chapter/${courseId}`), {
+            const chaptersResponse = await axiosInstance.get(
+                `/courses/chapter/${courseId}`,
+                {
                     headers: { Authorization: `Bearer ${token}` }
-            });
+                }
+            );
             
             if (chaptersResponse.status === 200) {
                 const chaptersData = chaptersResponse.data || [];
@@ -93,9 +94,12 @@ const VideoPlayer = () => {
                 const chaptersWithVideos = await Promise.all(
                     chaptersData.map(async (chapter) => {
                         try {
-                            const videosResponse = await axios.get(getApiUrl(`/api/courses/video/${chapter._id}`), {
+                            const videosResponse = await axiosInstance.get(
+                                `/courses/video/${chapter._id}`,
+                                {
                                     headers: { Authorization: `Bearer ${token}` }
-                            });
+                                }
+                            );
                             
                             return {
                                 ...chapter,
@@ -163,8 +167,8 @@ const VideoPlayer = () => {
                     
                     // Fetch progress data for all videos in the course
                     try {
-                        const allProgressResponse = await axios.get(
-                            getApiUrl('/api/courses/enrolled'),
+                        const allProgressResponse = await axiosInstance.get(
+                            `/courses/enrolled`,
                             {
                                 headers: { Authorization: `Bearer ${token}` }
                             }
@@ -186,8 +190,8 @@ const VideoPlayer = () => {
                                 // We need to fetch individual video progress data
                                 for (const videoId of allVideoIds) {
                                     try {
-                                        const videoProgressResponse = await axios.get(
-                                            getApiUrl(`/api/courses/video/progress/${userId}/${courseId}/${videoId}`),
+                                        const videoProgressResponse = await axiosInstance.get(
+                                            `/courses/video/progress/${userId}/${courseId}/${videoId}`,
                                             {
                                                 headers: { Authorization: `Bearer ${token}` }
                                             }
@@ -283,8 +287,8 @@ const VideoPlayer = () => {
                 const userId = tokenPayload.id;
 
                 // Check if user is enrolled
-                const enrollmentResponse = await axios.get(
-                    getApiUrl(`/api/courses/enrollment/${courseId}`),
+                const enrollmentResponse = await axiosInstance.get(
+                    `/courses/enrollment/${courseId}`,
                     {
                         headers: { Authorization: `Bearer ${token}` }
                     }
@@ -295,8 +299,8 @@ const VideoPlayer = () => {
                     
                     // Fetch course progress data first to set it immediately
                     try {
-                        const allProgressResponse = await axios.get(
-                            getApiUrl('/api/courses/enrolled'),
+                        const allProgressResponse = await axiosInstance.get(
+                            `/courses/enrolled`,
                             {
                                 headers: { Authorization: `Bearer ${token}` }
                             }
@@ -421,11 +425,11 @@ const VideoPlayer = () => {
         // It will be updated when saveVideoProgress is called
 
         // Save video progress to backend
-            if (currentLesson?._id && courseData?._id && percent > 0) {
-                // Save progress every 5 seconds or when reaching important thresholds
+        if (currentLesson?._id && courseData?._id && percent > 0) {
+            // Save progress every 5 seconds or when reaching important thresholds
             if (Math.floor(currentTime) % 5 === 0 || percent >= 95) {
                 const isCompleted = percent >= 95;
-                saveVideoProgress(isCompleted);
+                saveVideoProgress(currentTime, isCompleted);
                 
                 // Mark video as completed if watched more than 95%
                 if (isCompleted && !completedLessons.has(currentLesson._id)) {
@@ -436,48 +440,92 @@ const VideoPlayer = () => {
     };
 
     // Function to save video progress to the backend
-    const saveVideoProgress = (completed = false) => {
-        if (!currentLesson?._id || !courseData?._id) {
-            console.error("Missing courseData or currentLesson data");
-            return;
-        }
-        
-        const progress = videoRef.current ? videoRef.current.currentTime : 0;
-        console.log('Saving video progress:', progress, 'Completed:', completed);
-        
-        const progressData = {
-            userId: localStorage.getItem('token')?.split('.')[1]?.split('|')[0],
-            courseId: courseData._id,
-            videoId: currentLesson._id,
-            progress,
-            completed,
-            course_progress: courseProgress
-        };
-        
-        // Try to save progress directly
-        courseApi.directSaveVideoProgress(progressData)
-            .then(response => {
-                console.log('Progress saved successfully:', response);
+    const saveVideoProgress = async (currentTime, completed) => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+            const userId = tokenPayload.id;
+            
+            if (!courseData?._id || !currentLesson?._id) {
+                console.error("Missing courseData or currentLesson data");
+                return;
+            }
+            
+            // Calculate video progress percentage
+            let progressPercent = 0;
+            if (videoRef.current && videoRef.current.duration) {
+                progressPercent = (currentTime / videoRef.current.duration) * 100;
+            }
+            
+            console.log("Saving video progress:", {
+                user_id: userId,
+                course_id: courseData._id,
+                video_id: currentLesson._id,
+                current_time: currentTime,
+                progress_percent: progressPercent,
+                completed: completed
+            });
+
+            // Call the backend API to update video progress
+            const response = await axiosInstance.post(
+                '/courses/video/progress',
+                {
+                    user_id: userId,
+                    course_id: courseData._id,
+                    video_id: currentLesson._id,
+                    current_time: currentTime,
+                    progress_percent: progressPercent,
+                    completed: completed
+                },
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+
+            if (response.data && response.data.success) {
+                console.log("Video progress saved successfully:", response.data);
                 
-                // Update local state with the new progress
+                // Update completedLessons based on server response for consistency
+                if (response.data.data && response.data.data.completed) {
+                    // Add to completed lessons if it's not already there
+                    if (!completedLessons.has(currentLesson._id)) {
+                        setCompletedLessons(prev => new Set([...prev, currentLesson._id]));
+                    }
+                } else if (response.data.data && !response.data.data.completed) {
+                    // Remove from completed lessons if it's there
+                    if (completedLessons.has(currentLesson._id)) {
+                        setCompletedLessons(prev => {
+                            const newSet = new Set([...prev]);
+                            newSet.delete(currentLesson._id);
+                            return newSet;
+                        });
+                    }
+                }
+                
+                // Update progress map with saved progress
                 setVideoProgressMap(prev => {
                     const newMap = new Map(prev);
                     newMap.set(currentLesson._id, {
-                        watchedTime: progress,
+                        watchedTime: currentTime,
                         duration: videoRef.current?.duration || 0,
-                        percent: progress > 0 ? (progress / videoRef.current?.duration) * 100 : 0
+                        percent: progressPercent
                     });
                     return newMap;
                 });
                 
-                // If the video is completed, update the completed lessons state
-                if (completed) {
-                    setCompletedLessons(prev => new Set([...prev, currentLesson._id]));
+                // Use the course_progress from the server response if available
+                if (response.data.data.course_progress !== undefined) {
+                    setCourseProgress(response.data.data.course_progress);
+                } else {
+                    // Fallback to local calculation if server doesn't provide course progress
+                    setCourseProgress(calculateCourseProgress());
                 }
-            })
-            .catch(error => {
-                console.error('Error saving video progress:', error);
-            });
+            }
+        } catch (error) {
+            console.error("Error saving video progress:", error);
+        }
     };
 
     // Toggle chapter visibility
@@ -507,8 +555,8 @@ const VideoPlayer = () => {
             }
             
             // Update the API endpoint to match backend routes
-            const response = await axios.get(
-                getApiUrl(`/api/courses/comment/${videoId}`),
+            const response = await axiosInstance.get(
+                `/courses/comment/${videoId}`,
                 {
                     headers: { Authorization: `Bearer ${token}` }
                 }
@@ -571,8 +619,8 @@ const VideoPlayer = () => {
             setNewComment("");
             
             // Update API endpoint to match backend routes
-            const response = await axios.post(
-                getApiUrl('/api/courses/comment'),
+            const response = await axiosInstance.post(
+                '/courses/comment',
                 {
                     user_id: userId,
                     video_id: currentLesson._id,
@@ -624,8 +672,8 @@ const VideoPlayer = () => {
             setComments(prev => prev.filter(c => c.id !== commentId));
             
             // Update API endpoint to match backend routes
-            const response = await axios.delete(
-                getApiUrl(`/api/courses/comment/${commentId}`),
+            const response = await axiosInstance.delete(
+                `/courses/comment/${commentId}`,
                 {
                     headers: { Authorization: `Bearer ${token}` }
                 }
@@ -664,8 +712,8 @@ const VideoPlayer = () => {
             setComments(updatedComments);
             
             // Update API endpoint to match backend routes
-            const response = await axios.patch(
-                getApiUrl(`/api/courses/comment/${editingComment.id}`),
+            const response = await axiosInstance.patch(
+                `/courses/comment/${editingComment.id}`,
                 {
                     comment_text: editCommentText
                 },
@@ -822,78 +870,100 @@ const VideoPlayer = () => {
         visible: { opacity: 1, height: "auto", transition: { duration: 0.3, ease: "easeInOut" } },
     };
 
-    // Update the getVideoSrc function to use our utility
-    const getVideoSrc = (videoPath) => {
-        if (!videoPath) return "";
-        
-        // Use our utility function to get the full URL
-        return getResourceUrl(videoPath);
+    // Add a helper function to properly format the video URL
+    const formatVideoUrl = (videoPath) => {
+        if (!videoPath) return null;
+        if (videoPath.startsWith('http')) return videoPath;
+        return `http://localhost:5000/${videoPath.replace(/^\//, '')}`;
     };
 
     // Add the loadVideoProgress function to fetch progress when switching videos
     const loadVideoProgress = async (videoId) => {
-        console.log('Loading video progress...');
-
-        // Validation
-        if (!videoId) {
-            console.error('No videoId provided for progress loading');
-            return;
-        }
+        try {
+            if (!videoId) {
+                console.error("Invalid videoId provided to loadVideoProgress");
+                return;
+            }
 
             const token = localStorage.getItem('token');
-            if (!token) {
-            console.error('No authentication token found');
-                return;
-            }
+            if (!token) return;
 
-        const userData = JSON.parse(localStorage.getItem('user'));
-        if (!userData || !userData.id) {
-            console.error('No user data found in localStorage');
-                return;
-            }
+            const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+            const userId = tokenPayload.id;
+            const courseId = courseData?._id;
 
-        const userId = userData.id;
-        const courseId = courseData?._id;
-        console.log('Loading progress for video:', videoId);
+            if (!userId || !courseId) return;
 
-        // Attempt to fetch progress directly
-        courseApi.directGetVideoProgress(userId, courseId, videoId)
-            .then(response => {
-                console.log('Progress loading response:', response);
+            console.log("Fetching video progress for: ", { userId, courseId, videoId });
+
+            const response = await axiosInstance.get(
+                `/courses/video/progress/${userId}/${courseId}/${videoId}`,
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+
+            console.log("Video progress response:", response.data);
+
+            if (response.data.success && response.data.data) {
+                const { current_time, completed, progress_percent, course_progress } = response.data.data;
                 
-                // Process the progress data
-                if (response) {
-                    // Store the progress data in a map
-                    setVideoProgressMap(prevState => ({
-                        ...prevState,
-                        [videoId]: response.progress
-                    }));
-
-                    // Update the completed lessons
-                    if (response.completed) {
-                        setCompletedLessons(prevState => ({
-                            ...prevState,
-                            [videoId]: true
-                        }));
-                    }
-
-                    // If there's stored progress, set the video time
-                    if (response.progress > 0 && videoRef.current) {
-                        console.log('Setting video time to:', response.progress);
-                        videoRef.current.currentTime = response.progress;
-                    }
-
-                    // If course progress is available from the server, use it
-                    if (response.course_progress !== undefined && response.course_progress !== null) {
-                        console.log('Setting course progress from server:', response.course_progress);
-                        setCourseProgress(response.course_progress);
-                        initialProgressLoaded.current = true;
+                console.log("Setting video time to:", current_time);
+                
+                // Store the progress data in the map
+                setVideoProgressMap(prev => {
+                    const newMap = new Map(prev);
+                    newMap.set(videoId, {
+                        watchedTime: current_time,
+                        duration: videoRef.current?.duration || 0,
+                        percent: progress_percent || 0
+                    });
+                    return newMap;
+                });
+                
+                // Set progress directly if available
+                if (progress_percent) {
+                    setProgress(progress_percent);
+                }
+                
+                // Mark video as completed if needed - IMPORTANT: use the completed flag from server
+                if (completed) {
+                    setCompletedLessons(prev => {
+                        if (!prev.has(videoId)) {
+                            return new Set([...prev, videoId]);
+                        }
+                        return prev;
+                    });
+                } else {
+                    // If server says it's not completed, make sure to remove it from completedLessons
+                    setCompletedLessons(prev => {
+                        if (prev.has(videoId)) {
+                            const newSet = new Set([...prev]);
+                            newSet.delete(videoId);
+                            return newSet;
+                        }
+                        return prev;
+                    });
+                }
+                
+                // Set video time if possible
+                if (current_time > 0) {
+                    // If video element is already loaded, set time directly
+                    if (videoRef.current && videoRef.current.readyState >= 2) {
+                        console.log("Video already loaded, setting time immediately");
+                        videoRef.current.currentTime = current_time;
                     }
                 }
-            })
-            .catch(error => {
-                console.error('Error loading video progress:', error);
-            });
+                
+                // Update course progress from server response if available
+                if (course_progress !== undefined) {
+                    setCourseProgress(course_progress);
+                    initialProgressLoaded.current = true;
+                }
+            }
+        } catch (error) {
+            console.error("Error loading video progress:", error);
+        }
     };
 
     // Update video navigation handler
@@ -910,7 +980,7 @@ const VideoPlayer = () => {
             const currentTime = videoRef.current.currentTime;
             const videoDuration = videoRef.current.duration;
             const completed = (currentTime / videoDuration) * 100 >= 95;
-            saveVideoProgress(completed);
+            saveVideoProgress(currentTime, completed);
         }
         
         // Normalize the video data
@@ -923,9 +993,9 @@ const VideoPlayer = () => {
             chapterTitle: video.chapterTitle,
             ...video
         };
-        
+
         // Validate video URL
-        const formattedUrl = getVideoSrc(normalizedVideo.videoUrl);
+        const formattedUrl = formatVideoUrl(normalizedVideo.videoUrl);
         if (!formattedUrl) {
             console.error("Invalid video URL:", normalizedVideo.videoUrl);
             setVideoError("Invalid video URL. Please try another video.");
@@ -942,11 +1012,11 @@ const VideoPlayer = () => {
         setComments([]);
         
         // Reset video player first to ensure clean state
-            if (videoRef.current) {
-                videoRef.current.pause();
+        if (videoRef.current) {
+            videoRef.current.pause();
             videoRef.current.removeAttribute('src');
-                videoRef.current.load();
-            }
+            videoRef.current.load();
+        }
         
         // Load video progress - do this with a slight delay to ensure state updates
         setTimeout(() => {
@@ -988,8 +1058,8 @@ const VideoPlayer = () => {
                 console.log("Updating existing rating to:", selectedRating);
                 
                 // Include user_id explicitly in the request body
-                const response = await axios.patch(
-                    getApiUrl(`/api/courses/rating/${courseData._id}`),
+                const response = await axiosInstance.patch(
+                    `/courses/rating/${courseData._id}`,
                     {
                         user_id: userId,
                         rating: selectedRating
@@ -1013,8 +1083,8 @@ const VideoPlayer = () => {
             } else {
                 // Submit new rating
                 console.log("Submitting new rating:", selectedRating);
-                const response = await axios.post(
-                    getApiUrl('/api/courses/rating'),
+                const response = await axiosInstance.post(
+                    '/courses/rating',
                     {
                         user_id: userId,
                         course_id: courseData._id,
@@ -1058,8 +1128,8 @@ const VideoPlayer = () => {
     const refreshRatingData = async (courseId, userId, token) => {
         try {
             // Fetch updated average rating
-            const avgResponse = await axios.get(
-                getApiUrl(`/common/rating/${courseId}`),
+            const avgResponse = await axiosInstance.get(
+                `/common/rating/${courseId}`,
                 {
                     headers: { Authorization: `Bearer ${token}` }
                 }
@@ -1257,16 +1327,19 @@ const VideoPlayer = () => {
                         {isLoading ? (
                             <Spinner animation="border" variant="light" size="sm" />
                         ) : (
+
                         <CircularProgressbar
+
+
                                 value={courseProgress || 0}
                                 text={`${Math.round(courseProgress || 0)}%`}
-                            styles={buildStyles({ 
-                                textSize: "30px", 
-                                pathColor: "#0d6efd", 
-                                textColor: "white",
-                                trailColor: "rgba(255,255,255,0.3)" 
-                            })}
-                        />
+                                styles={buildStyles({ 
+                                    textSize: "30px", 
+                                    pathColor: "#0d6efd", 
+                                    textColor: "white",
+                                    trailColor: "rgba(255,255,255,0.3)" 
+                                })}
+                            />
                         )}
                     </div>
                     <div style={{ color: "white", fontSize: "0.8rem" }}>
@@ -1335,18 +1408,20 @@ const VideoPlayer = () => {
                                 )}
                                 
                                 {currentLesson?.videoUrl || currentLesson?.video_url ? (
+
                         <video
                             ref={videoRef}
                             controls
                             width="100%"
                             style={{ borderRadius: "10px" }}
-                                    onTimeUpdate={handleTimeUpdate}
-                                    onWaiting={() => setVideoLoading(true)}
+
+                                        onTimeUpdate={handleTimeUpdate}
+                                        onWaiting={() => setVideoLoading(true)}
                                         onCanPlay={() => {
                                             setVideoLoading(false);
                                             setVideoError(null);
                                         }}
-                                    onLoadStart={() => {
+                                        onLoadStart={() => {
                                             setVideoLoading(true);
                                             console.log("Video loading started");
                                         }}
@@ -1368,8 +1443,8 @@ const VideoPlayer = () => {
                                                         const tokenPayload = JSON.parse(atob(token.split('.')[1]));
                                                         const userId = tokenPayload.id;
                                                         
-                                                        axios.get(
-                                                            getApiUrl(`/api/courses/video/progress/${userId}/${courseData._id}/${currentLesson._id}`),
+                                                        axiosInstance.get(
+                                                            `/courses/video/progress/${userId}/${courseData._id}/${currentLesson._id}`,
                                                             { headers: { Authorization: `Bearer ${token}` } }
                                                         )
                                                         .then(response => {
@@ -1387,18 +1462,21 @@ const VideoPlayer = () => {
                                             console.log("Video data loaded");
                                             setVideoLoading(false);
                                         }}
-                                    onError={(e) => {
-                                        console.error("Video error:", e);
+                                        onError={(e) => {
+                                            console.error("Video error:", e);
                                             setVideoError("Failed to load video. Please try again.");
                                             setVideoLoading(false);
-                                    }}
-                                >
-                                    <source 
-                                            src={getVideoSrc(currentLesson.videoUrl || currentLesson.video_url)}
-                                        type="video/mp4" 
-                                    />
-                                    Your browser does not support the video tag.
+                                        }}
+                                    >
+                                        <source 
+                                            src={formatVideoUrl(currentLesson.videoUrl || currentLesson.video_url)}
+                                            type="video/mp4"
+                                        />
+                                        Your browser does not support the video tag.
+
                         </video>
+
+
                                 ) : (
                                     <div style={{
                                         height: "300px",
@@ -1406,7 +1484,10 @@ const VideoPlayer = () => {
                                         justifyContent: "center",
                                         alignItems: "center",
                                         backgroundColor: "#000",
+
                                     color: "white",
+
+
                                         borderRadius: "10px"
                                     }}>
                                         No video source available
@@ -1420,7 +1501,7 @@ const VideoPlayer = () => {
                                 justifyContent: "center", 
                                 alignItems: "center", 
                                 height: "300px",
-                                    color: "white",
+                                color: "white",
                                 textAlign: "center",
                                 padding: "20px"
                             }}>
@@ -1438,7 +1519,10 @@ const VideoPlayer = () => {
                                 ) : (
                                     "No video available for this lesson"
                                 )}
+
                         </div>
+
+
                         )}
 
                         {/* Previous Button */}
@@ -1700,30 +1784,38 @@ const VideoPlayer = () => {
                                                         <div
                                                             key={video._id || videoIndex}
                                                             onClick={() => handleVideoNavigation(video)}
+
                                                         style={{
                                                                 backgroundColor: currentLesson?._id === video._id ? "#e9f0ff" : "transparent",
                                                                 borderLeft: currentLesson?._id === video._id ? "3px solid #0d6efd" : "none",
                                                                 marginBottom: "5px",
                                                             padding: "8px 10px",
-                                                            cursor: "pointer",
+                                                                cursor: "pointer",
                                                                 borderRadius: "4px",
                                                             display: "flex",
+
                                                                 flexDirection: "column",
                                                                 transition: "background-color 0.2s ease"
-                                                        }}
-                                                    >
+                                                            }}
+                                                        >
                                                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                                            <span>
-                                                                <CameraVideo
+                                                                <span>
+                                                                    <CameraVideo
+
                                                             className="me-2"
-                                                                    style={{ color: currentLesson?._id === video._id ? "#0d6efd" : "#666" }}
-                                                                />
-                                                                {video.title || video.video_title || `Video ${videoIndex + 1}`}
-                                                            </span>
-                                                            {completedLessons.has(video._id) && (
-                                                                <span className="text-success">✓</span>
+
+
+                                                                        style={{ color: currentLesson?._id === video._id ? "#0d6efd" : "#666" }}
+                                                                    />
+                                                                    {video.title || video.video_title || `Video ${videoIndex + 1}`}
+                                                                </span>
+                                                                {completedLessons.has(video._id) && (
+                                                                    <span className="text-success">✓</span>
                                                                 )}
+
                                                     </div>
+
+
                                                             {/* Progress bar for each video */}
                                                             {progressPercent > 0 && (
                                                                 <div style={{ 
@@ -1742,7 +1834,7 @@ const VideoPlayer = () => {
                                                                     }} />
                                                                 </div>
                                                             )}
-                                                    </div>
+                                                        </div>
                                                     );
                                                 })
                                             ) : (

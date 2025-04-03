@@ -1,16 +1,8 @@
-import axios from "axios";
+import axiosInstance from "./axiosInstance";
 import { store } from "../features/auth/store";
 import { logout } from "../features/auth/authSlice";
-import API_CONFIG from "../config/apiConfig";
-
-console.log("API Base URL:", API_CONFIG.BASE_URL);
-
-const common_API = axios.create({ 
-  baseURL: `${API_CONFIG.BASE_URL}${API_CONFIG.USERS_ENDPOINT}` 
-});
-
-// Log the full baseURL for debugging
-console.log("Common API BaseURL:", `${API_CONFIG.BASE_URL}${API_CONFIG.USERS_ENDPOINT}`);
+import axios from "axios";
+const common_API = axios.create({ baseURL: `${axiosInstance.defaults.baseURL}/users` });
 
 // Flag to prevent multiple redirects
 let isRedirecting = false;
@@ -32,14 +24,6 @@ common_API.interceptors.request.use((req) => {
     try {
       // Perform basic token validation
       const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-      
-      // Basic expiration check
-      const currentTime = Math.floor(Date.now() / 1000);
-      if (tokenPayload.exp && tokenPayload.exp < currentTime) {
-        console.error("Token expired");
-        // Don't throw - let the request proceed and be rejected by server
-        // This avoids redirect loops
-      }
       
       // Add token to header
       req.headers.Authorization = `Bearer ${token}`;
@@ -63,8 +47,6 @@ common_API.interceptors.response.use(
     if (!isRedirecting && error.response && (error.response.status === 401 || error.response.status === 403)) {
       isRedirecting = true;
       
-      console.log("Authentication error detected, redirecting to login page");
-      
       // Clear localStorage directly to prevent any manipulation
       localStorage.removeItem("user");
       localStorage.removeItem("token");
@@ -72,10 +54,10 @@ common_API.interceptors.response.use(
       // Dispatch logout action
       store.dispatch(logout());
       
-      // Redirect to login page with a hard refresh
+      // Redirect to login page
       window.location.href = "/";
       
-      // Reset flag after redirect attempt
+      // Reset flag after redirect (though this won't execute)
       setTimeout(() => {
         isRedirecting = false;
       }, 1000);

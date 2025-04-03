@@ -1,11 +1,8 @@
-import axios from "axios";
+import axiosInstance from "./axiosInstance";
 import { store } from "../features/auth/store";
 import { logout } from "../features/auth/authSlice";
-import API_CONFIG from "../config/apiConfig";
-
-const Wishlist_API = axios.create({ 
-  baseURL: `${API_CONFIG.BASE_URL}${API_CONFIG.WISHLIST}` 
-});
+import axios from "axios";
+const Wishlist_API = axios.create({ baseURL: `${axiosInstance.defaults.baseURL}/wishlist` });
 
 Wishlist_API.interceptors.request.use((req) => {
   const token = localStorage.getItem("token");

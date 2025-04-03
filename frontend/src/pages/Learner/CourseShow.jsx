@@ -5,9 +5,8 @@ import { CameraVideo, FileEarmarkText, ChevronDown, ChevronUp } from "react-boot
 import { motion } from "framer-motion";
 import common_API from "../../Api/commonApi";
 import Courses_API from "../../Api/courseApi";
-import axios from "axios";
+import axiosInstance from '../../Api/axiosInstance';
 import { toast } from "react-hot-toast";
-import { getApiUrl } from "../../utils/apiUtils";
 
 const CourseShow = () => {
     const { courseId } = useParams();
@@ -112,10 +111,13 @@ const CourseShow = () => {
                     return;
                 }
 
-                const response = await axios.get(
-                    getApiUrl(`/api/courses/enrollment/${course._id}`),
+                const response = await axiosInstance.get(
+                    `/courses/enrollment/${course._id}`,
                     {
+
                         headers: {Authorization:`Bearer ${token}`}
+
+
                     }
                 );
 
@@ -173,8 +175,8 @@ const CourseShow = () => {
                 return;
             }
 
-            const response = await axios.post(
-                getApiUrl(`/api/courses/${course._id}/enroll`),
+            const response = await axiosInstance.post(
+                `/courses/${course._id}/enroll`,
                 {},
                 {
                     headers: { Authorization: `Bearer ${token}` }
@@ -223,104 +225,98 @@ const CourseShow = () => {
     };
 
     // Update handleVideoClick function
-    const handleVideoClick = async (videoId, videoUrl) => {
+    const handleVideoClick = (video, chapterIndex) => {
         if (!isEnrolled) {
-            setSelectedVideo({ videoId, videoUrl });
+            setSelectedVideo({ video, chapterIndex });
             setShowEnrollModal(true);
             return;
         }
-        
-        console.log("Video clicked - ID:", videoId, "URL:", videoUrl);
-        
-        try {
-            const userData = JSON.parse(localStorage.getItem("user"));
-            if (!userData) {
-                console.error("No user data found in localStorage");
-                navigateToVideo(videoId, videoUrl);
-                return;
-            }
-            
-            const userId = userData.id;
-            const courseId = course._id;
-            
-            console.log("Fetching progress data - User:", userId, "Course:", courseId, "Video:", videoId);
-            
-            // Try to fetch progress using our direct API method
+
+        // Check if the video has any saved progress
+        const fetchAndNavigate = async () => {
             try {
-                const progressResponse = await axios.get(
-                    getApiUrl(`/api/courses/video/progress/${userId}/${courseId}/${videoId}`),
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    // If no token, just navigate without progress info
+                    navigateToVideo(video, chapterIndex);
+                    return;
+                }
+
+                const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+                const userId = tokenPayload.id;
+
+                // First get overall course progress
+                let courseProgressData = null;
+                try {
+                    const coursesResponse = await axiosInstance.get(
+                        '/courses/enrolled',
+                        {
+                            headers: { Authorization: `Bearer ${token}` }
+                        }
+                    );
+                    
+                    if (coursesResponse.data && coursesResponse.data.success) {
+                        const thisCourse = coursesResponse.data.data.find(
+                            c => c._id === course._id
+                        );
+                        
+                        if (thisCourse && typeof thisCourse.progress === 'number') {
+                            courseProgressData = thisCourse.progress;
+                        }
+                    }
+                } catch (courseErr) {
+                    console.error("Error fetching course progress:", courseErr);
+                }
+
+                // Try to fetch progress for this video
+                const progressResponse = await axiosInstance.get(
+                    `/courses/video/progress/${userId}/${course._id}/${video._id}`,
                     {
-                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                        headers: { Authorization: `Bearer ${token}` }
                     }
                 );
-                console.log("Progress data fetched successfully:", progressResponse.data);
-                
+
                 if (progressResponse.data && progressResponse.data.success) {
-                    // Create enhanced progress data including course progress
+                    console.log("Found progress for video:", progressResponse.data.data);
+                    
+                    // Add the course progress to the video progress data
                     const enhancedProgressData = {
                         ...progressResponse.data.data,
-                        videoId,
-                        userId,
-                        courseId
+                        course_progress: courseProgressData
                     };
                     
-                    // Navigate with progress data
-                    navigateToVideo(videoId, videoUrl, enhancedProgressData);
+                    // Navigate with the progress data
+                    navigateToVideo(video, chapterIndex, enhancedProgressData);
                 } else {
-                    navigateToVideo(videoId, videoUrl);
+                    // Navigate with just course progress data if we have it
+                    if (courseProgressData !== null) {
+                        navigateToVideo(video, chapterIndex, { course_progress: courseProgressData });
+                    } else {
+                        // Navigate without progress data
+                        navigateToVideo(video, chapterIndex);
+                    }
                 }
-            } catch (progressError) {
-                console.error("Error fetching progress:", progressError);
-                navigateToVideo(videoId, videoUrl);
-            }
-        } catch (error) {
-            console.error("Error in handleVideoClick:", error);
-            navigateToVideo(videoId, videoUrl);
-        }
-    };
-
-    // Helper method for navigation
-    const navigateToVideo = (videoId, videoUrl, progressData = null) => {
-        console.log("Navigating to video:", videoId);
-        
-        // Find the lesson and chapter for this video
-        let targetLesson = null;
-        let targetChapter = null;
-        
-        for (const chapter of course.chapters) {
-            for (const lesson of chapter.lessons) {
-                if (lesson._id === videoId) {
-                    targetLesson = lesson;
-                    targetChapter = chapter;
-                    break;
-                }
-            }
-            if (targetLesson) break;
-        }
-        
-        // Create navigation data
-        const navigationData = {
-            courseId: course._id,
-            videoId,
-            videoUrl,
-            chapters: course.chapters,
-            currentChapter: targetChapter,
-            currentLesson: targetLesson,
-            course: {
-                title: course.title,
-                description: course.description,
+            } catch (error) {
+                console.error("Error fetching video progress:", error);
+                // On error, just navigate without progress data
+                navigateToVideo(video, chapterIndex);
             }
         };
-        
-        // Add progress data if available
-        if (progressData) {
-            navigationData.progressData = progressData;
-        }
-        
-        // Navigate to video player with the correct path
-        navigate(`/video-player`, {
-            state: navigationData
-        });
+
+        // Helper function to navigate with or without progress data
+        const navigateToVideo = (video, chapterIndex, progressData = null) => {
+            navigate("/video-player", {
+                state: { 
+                    videoData: video,
+                    courseData: course,
+                    currentChapterIndex: chapterIndex,
+                    progressData: progressData // This will be null if no progress was found
+                }
+            });
+        };
+
+        // Execute the fetch and navigate
+        fetchAndNavigate();
     };
 
     // Add handleEnrollAndWatch function
@@ -332,8 +328,8 @@ const CourseShow = () => {
                 return;
             }
 
-            const response = await axios.post(
-                getApiUrl(`/api/courses/${course._id}/enroll`),
+            const response = await axiosInstance.post(
+                `/courses/${course._id}/enroll`,
                 {},
                 {
                     headers: { Authorization: `Bearer ${token}` }
@@ -484,7 +480,7 @@ const CourseShow = () => {
                                                         key={video._id}
                                                         className="d-flex justify-content-between align-items-center border-0 py-2"
                                                         style={{ cursor: "pointer" }}
-                                                        onClick={() => handleVideoClick(video._id, video.video_url)}
+                                                        onClick={() => handleVideoClick(video, chapterIndex)}
                                                     >
                                                         <div className="d-flex align-items-center">
                                                             <CameraVideo className="me-2 text-primary" />

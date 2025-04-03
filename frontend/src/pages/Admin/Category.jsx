@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Form, Table, Modal, Alert, Spinner } from 'react-bootstrap';
 import { FaEdit, FaTrash } from 'react-icons/fa';
-import axios from 'axios';
-import { toast } from 'react-hot-toast';
-import { getApiUrl } from '../../utils/apiUtils';
 
+import { toast } from 'react-hot-toast';
+import axiosInstance from '../../Api/axiosInstance';
 const Category= () => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -24,7 +23,7 @@ const Category= () => {
                 return;
             }
 
-            const response = await axios.get(getApiUrl('/api/courses/category'), {
+            const response = await axiosInstance.get('/courses/category', {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -50,8 +49,8 @@ const Category= () => {
                 return;
             }
 
-            const response = await axios.post(
-                getApiUrl('/api/courses/category'),
+            const response = await axiosInstance.post(
+                '/courses/category',
                 { category_name: newCategory },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -77,8 +76,8 @@ const Category= () => {
                 return;
             }
 
-            const response = await axios.patch(
-                getApiUrl(`/api/courses/category/${editingCategory._id}`),
+            const response = await axiosInstance.patch(
+                `/courses/category/${editingCategory._id}`,
                 { category_name: editCategoryName },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -111,8 +110,8 @@ const Category= () => {
                 return;
             }
 
-            const response = await axios.delete(
-                getApiUrl(`/api/courses/category/${categoryId}`),
+            const response = await axiosInstance.delete(
+                `/courses/category/${categoryId}`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 

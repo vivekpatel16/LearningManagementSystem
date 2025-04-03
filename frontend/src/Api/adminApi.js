@@ -1,11 +1,8 @@
-import axios from "axios";
+import axiosInstance from "./axiosInstance";
 import { store } from "../features/auth/store";
 import { logout } from "../features/auth/authSlice";
-import API_CONFIG from "../config/apiConfig";
-
-const Admin_API = axios.create({ 
-  baseURL: `${API_CONFIG.BASE_URL}${API_CONFIG.ADMIN}` 
-});
+import axios from "axios";
+const Admin_API = axios.create({ baseURL: `${axiosInstance.defaults.baseURL}/admin` });
 
 Admin_API.interceptors.request.use((req) => {
   const token = localStorage.getItem("token");
