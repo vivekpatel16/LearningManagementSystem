@@ -6,11 +6,11 @@ import API_CONFIG from "../config/apiConfig";
 console.log("API Base URL:", API_CONFIG.BASE_URL);
 
 const common_API = axios.create({ 
-  baseURL: `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}` 
+  baseURL: `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS_ENDPOINT}` 
 });
 
 // Log the full baseURL for debugging
-console.log("Common API BaseURL:", `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}`);
+console.log("Common API BaseURL:", `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS_ENDPOINT}`);
 
 // Flag to prevent multiple redirects
 let isRedirecting = false;
