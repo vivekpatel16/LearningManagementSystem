@@ -28,9 +28,33 @@ router.delete("/chapter/:chapter_id",authenticateUser,deleteChapter);
 
 
 router.patch("/video/order",authenticateUser,updateVideoOrder);
-router.post("/video", authenticateUser, cloudinaryUploadVideo.single("video"), cloudinaryMulterError, uploadVideo);
+router.post(
+  "/video",
+  authenticateUser,
+  (req, res, next) => {
+    // Set extended timeout for this specific route
+    req.setTimeout(30 * 60 * 1000); // 30 minutes
+    res.setTimeout(30 * 60 * 1000);
+    next();
+  },
+  cloudinaryUploadVideo.single("video"),
+  cloudinaryMulterError,
+  uploadVideo
+);
 router.get("/video/:chapter_id",authenticateUser,getVideosByChapter);
-router.patch("/video/:video_id", authenticateUser, cloudinaryUploadVideo.single("video"), cloudinaryMulterError, editVideoDetails);
+router.patch(
+  "/video/:video_id", 
+  authenticateUser, 
+  (req, res, next) => {
+    // Set extended timeout for this specific route
+    req.setTimeout(30 * 60 * 1000); // 30 minutes
+    res.setTimeout(30 * 60 * 1000);
+    next();
+  },
+  cloudinaryUploadVideo.single("video"), 
+  cloudinaryMulterError, 
+  editVideoDetails
+);
 router.delete("/video/:video_id",authenticateUser,deleteVideo);
 
 
