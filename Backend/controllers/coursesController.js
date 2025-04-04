@@ -58,14 +58,23 @@ exports.fetchCourses = async (req, res) => {
     
     let courses;
     let instructorCoursesCount = 0;
-    if (req.user.role === "instructor") {
-      courses = await Courses.find({ created_by: req.user.id ,status:true}).populate("created_by","user_name");
-      instructorCoursesCount = await Courses.countDocuments({ created_by: req.user.id ,status:true});
-    } else {
-      courses = await Courses.find({status:true}).populate("created_by","user_name");
+
+    // Admin sees all courses including deactivated ones
+    if (req.user.role === "admin") {
+      courses = await Courses.find().populate("created_by", "user_name");
+    } 
+    // Instructors only see their active courses
+    else if (req.user.role === "instructor") {
+      courses = await Courses.find({ created_by: req.user.id, status: true }).populate("created_by", "user_name");
+      instructorCoursesCount = await Courses.countDocuments({ created_by: req.user.id, status: true });
+    } 
+    // Regular users only see active courses
+    else {
+      courses = await Courses.find({ status: true }).populate("created_by", "user_name");
     }
+
     res.status(202).json({
-      data:courses || [],
+      data: courses || [],
       totalUser,
       totalInstructor,
       activeLearnersCount,
@@ -228,7 +237,12 @@ exports.getEnrolledCourses = async (req, res) => {
       });
     }
 
-    const enrolledCourses = enrollments.reduce((acc, enrollment) => {
+    // Filter out enrollments for inactive courses
+    const activeEnrollments = enrollments.filter(enrollment => 
+      enrollment.course_id && enrollment.course_id.status === true
+    );
+
+    const enrolledCourses = activeEnrollments.reduce((acc, enrollment) => {
       if (!enrollment.course_id) {
         console.log("Skipping enrollment with no course_id:", enrollment);
         return acc;
@@ -260,47 +274,27 @@ exports.getEnrolledCourses = async (req, res) => {
 
     console.log("Processed enrolled courses:", enrolledCourses);
 
-    
     const coursesWithProgress = await Promise.all(
       Object.values(enrolledCourses).map(async (enrollment) => {
         try {
-          if (!enrollment.course || !enrollment.course._id) {
-            console.error('Invalid course data:', enrollment);
-            return null;
-          }
-
-          // Get all videos for this course
-          const chapters = await Chapter.find({ course_id: enrollment.course._id });
-          console.log(`Found chapters for course ${enrollment.course._id}:`, chapters.length);
+          const chapters = await Chapter.find({ course_id: enrollment.course._id }).sort({ order: 1 });
+          let totalVideos = 0;
+          let completedVideos = 0;
           
-          const chapterIds = chapters.map(chapter => chapter._id);
-          const totalVideos = await VideoInfo.countDocuments({
-            chapter_id: { $in: chapterIds }
-          });
-
-          console.log(`Total videos for course ${enrollment.course._id}:`, totalVideos);
-
-          // Find all video progress records for this user and course
-          const videoProgressRecords = await VideoUser.find({
-            user_id,
-            course_id: enrollment.course._id
-          });
-
-          // Count completed videos
-          const completedVideos = videoProgressRecords.filter(record => record.completed).length;
+          await Promise.all(chapters.map(async (chapter) => {
+            const videos = await VideoInfo.find({ chapter_id: chapter._id });
+            totalVideos += videos.length;
+            
+            const completedVideoCount = await VideoUser.countDocuments({
+              user_id,
+              video_id: { $in: videos.map(v => v._id) },
+              completed: true
+            });
+            
+            completedVideos += completedVideoCount;
+          }));
           
-          // Calculate partial progress for videos in progress but not completed
-          let totalPartialProgress = 0;
-          videoProgressRecords.forEach(record => {
-            if (!record.completed && record.progress_percent > 0) {
-              totalPartialProgress += record.progress_percent / 100;
-            }
-          });
-          
-          // Calculate overall progress percentage - completed videos + partial progress
-          const progress = totalVideos > 0 
-            ? Math.min(100, Math.round(((completedVideos + totalPartialProgress) / totalVideos) * 100))
-            : 0;
+          const progress = totalVideos > 0 ? Math.round((completedVideos / totalVideos) * 100) : 0;
 
           return {
             _id: enrollment.course._id,
@@ -327,9 +321,8 @@ exports.getEnrolledCourses = async (req, res) => {
       })
     );
 
-   
     const validCourses = coursesWithProgress.filter(course => 
-      course !== null && course.status !== false
+      course !== null
     );
 
     console.log("Final valid courses:", validCourses);

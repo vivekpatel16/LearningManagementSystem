@@ -3,11 +3,15 @@ import { Container, Table, Button, Badge, Card } from "react-bootstrap";
 import { FaToggleOn, FaToggleOff } from "react-icons/fa";
 import common_API from "../../Api/commonApi";
 import Admin_API from "../../Api/adminApi";
+
 const CourseManagement = () => {
   const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const fetchCourses = async () => {
+    setLoading(true);
     try {
+      // Admin should see all courses, including inactive ones
       const response = await common_API.get("/courses", {
         headers: {
           "Content-Type": "application/json",
@@ -18,6 +22,8 @@ const CourseManagement = () => {
       setCourses(response.data.data);
     } catch (error) {
       console.error("Error fetching courses:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -70,28 +76,36 @@ const CourseManagement = () => {
             </tr>
           </thead>
           <tbody>
-            {courses.map((course, index) => (
-              <tr key={course._id}>
-                <td>{index + 1}</td>
-                <td>{course.title}</td>
-                <td>{course.created_by?.user_name || "Unknown"}</td>
-                <td>
-                  <Badge bg={course.status ? "success" : "secondary"}>
-                    {course.status ? "Active" : "Inactive"}
-                  </Badge>
-                </td>
-                <td>
-                  <Button
-                    variant={course.status ? "danger" : "success"}
-                    size="sm"
-                    onClick={() => toggleStatus(course._id, course.status)}
-                  >
-                    {course.status ? <FaToggleOff /> : <FaToggleOn />}{" "}
-                    {course.status ? "Deactivate" : "Activate"}
-                  </Button>
+            {courses.length > 0 ? (
+              courses.map((course, index) => (
+                <tr key={course._id}>
+                  <td>{index + 1}</td>
+                  <td>{course.title}</td>
+                  <td>{course.created_by?.user_name || "Unknown"}</td>
+                  <td>
+                    <Badge bg={course.status ? "success" : "danger"}>
+                      {course.status ? "Active" : "Inactive"}
+                    </Badge>
+                  </td>
+                  <td>
+                    <Button
+                      variant={course.status ? "danger" : "success"}
+                      size="sm"
+                      onClick={() => toggleStatus(course._id, course.status)}
+                    >
+                      {course.status ? <FaToggleOff /> : <FaToggleOn />}{" "}
+                      {course.status ? "Deactivate" : "Activate"}
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" className="text-center">
+                  {loading ? "Loading courses..." : "No courses found"}
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </Table>
       </Card>

@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { FaVideo, FaFileAlt, FaGripLines, FaEdit, FaTrash, FaPlus, FaSpinner, FaArrowLeft } from "react-icons/fa";
+import { FaVideo, FaFileAlt, FaGripLines, FaEdit, FaTrash, FaPlus, FaSpinner, FaArrowLeft, FaExclamationTriangle } from "react-icons/fa";
 import { Accordion, Button, ListGroup, Card, Spinner, Modal, Form, Alert, Container, Row, Col } from "react-bootstrap";
 import Courses_API from "../../Api/courseApi";
+import { toast } from "react-toastify";
 
 const CourseDetail = () => {
   const navigate = useNavigate();
@@ -41,6 +41,12 @@ const CourseDetail = () => {
   // Fetch chapters and videos when component mounts or when navigating back to this page
   useEffect(() => {
     if (course && course._id) {
+      // Check if course exists and isn't deactivated
+      if (course.status === false) {
+        toast.warning("This course is currently inactive and not visible to students.", {
+          autoClose: 7000
+        });
+      }
       fetchChaptersAndVideos();
     } else {
       setLoading(false);
@@ -584,36 +590,45 @@ const CourseDetail = () => {
   }
 
   return (
-    <Container className="mt-4">
-      <Row className="mb-4">
-        <Col xs={12}>
-          <Button 
-            variant="outline-secondary" 
-            className="mb-3"
-            onClick={handleBackToMyCourses}
-            style={{ width: 'fit-content' }}
-          >
-            <FaArrowLeft className="me-2" /> Back to My Courses
-          </Button>
-          <div className="d-flex justify-content-between align-items-center">
-            <h2>{course.title || "Course Details"}</h2>
-            <Button 
-              variant="primary" 
-              onClick={openAddChapterModal}
-              disabled={chapterLoading}
-            >
-              {chapterLoading ? (
-                <>
-                  <FaSpinner className="me-2 fa-spin" />
-                  Processing...
-                </>
-              ) : (
-                "+ Add Chapter"
-              )}
+    <Container fluid className="p-3">
+      <Button 
+        variant="outline-secondary" 
+        className="mb-3"
+        onClick={handleBackToMyCourses}
+        style={{ width: 'fit-content' }}
+      >
+        <FaArrowLeft className="me-2" /> Back to My Courses
+      </Button>
+      
+      {course.status === false && (
+        <Alert variant="warning" className="d-flex align-items-center mb-3">
+          <FaExclamationTriangle size={20} className="me-2" />
+          <div>
+            <strong>Course Inactive:</strong> This course is currently deactivated and not visible to students. 
+            Contact an administrator to reactivate it.
+          </div>
+        </Alert>
+      )}
+
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2>{course.title || "Course Details"}</h2>
+        <Button 
+          variant="primary" 
+          onClick={openAddChapterModal}
+          disabled={chapterLoading}
+        >
+          {chapterLoading ? (
+            <>
+              <FaSpinner className="me-2 fa-spin" />
+              Processing...
+            </>
+          ) : (
+            "+ Add Chapter"
+          )}
         </Button>
       </div>
-        </Col>
-      </Row>
+      
+      <p className="text-muted">{course.description}</p>
 
       {error && (
         <Alert variant="danger" className="mb-3" dismissible onClose={() => setError(null)}>

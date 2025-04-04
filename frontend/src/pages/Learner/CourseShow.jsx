@@ -36,6 +36,16 @@ const CourseShow = () => {
                 if (coursesResponse.data && coursesResponse.data.data) {
                     const courseData = coursesResponse.data.data.find(c => c._id === courseId);
                     if (courseData) {
+                        // Check if course is active, if not redirect to home page (except for admin)
+                        if (!courseData.status) {
+                            const user = JSON.parse(localStorage.getItem('user'));
+                            if (!user || user.role !== 'admin') {
+                                toast.error('This course is not available.');
+                                navigate('/');
+                                return;
+                            }
+                        }
+                        
                         setCourse(courseData);
                         
                         // Fetch chapters for this course

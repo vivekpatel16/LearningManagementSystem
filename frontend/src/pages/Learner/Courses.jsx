@@ -187,7 +187,7 @@ const Courses = () => {
         return;
       }
 
-      await Wishlist_API.post("/add", {
+      const response = await Wishlist_API.post("/add", {
         user_id: user._id,
         course_id: courseId
       });
@@ -197,9 +197,23 @@ const Courses = () => {
         ...prev,
         [courseId]: !prev[courseId]
       }));
+      
+      // Show success message
+      if (response.data && response.data.message) {
+        alert(response.data.message);
+      }
     } catch (err) {
       console.error("Error toggling wishlist:", err);
-      alert("Failed to update wishlist");
+      
+      // Handle specific error for inactive courses
+      if (err.response && err.response.data && err.response.data.message) {
+        alert(err.response.data.message);
+      } else {
+        alert("Failed to update wishlist");
+      }
+      
+      // If there was an error adding to wishlist, don't update the UI
+      // The error might be that the course is inactive
     }
   };
 

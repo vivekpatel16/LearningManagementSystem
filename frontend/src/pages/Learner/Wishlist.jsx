@@ -11,6 +11,7 @@ const Wishlist = () => {
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [infoMessage, setInfoMessage] = useState(null);
 
   const navigate = useNavigate();
 
@@ -24,6 +25,7 @@ const Wishlist = () => {
     try {
       setLoading(true);
       setError(null);
+      setInfoMessage(null);
       
       const user = JSON.parse(localStorage.getItem("user"));
       if (!user || !user._id) {
@@ -45,6 +47,14 @@ const Wishlist = () => {
             description: course.description,
             image: course.thumbnail || defaultImage
           }));
+          
+          // Check if any courses were filtered out due to inactive status
+          // We can determine this by checking if the original count is different
+          // from the returned count in the header
+          if (response.headers['x-total-courses'] && 
+              parseInt(response.headers['x-total-courses']) > wishlistCourses.length) {
+            setInfoMessage("Some courses in your wishlist are not available because they have been deactivated.");
+          }
         } else if (response.data.wishlist.course_id) {
           const course = response.data.wishlist.course_id;
           wishlistCourses = [{
@@ -160,69 +170,79 @@ const Wishlist = () => {
         </div>
       ) : error ? (
         <Alert variant="danger" className="text-center my-4">{error}</Alert>
-      ) : wishlist.length === 0 ? (
-        <div className="text-center my-5">
-            <h5 className="text-muted">No courses in your wishlist.</h5>
-          <Button 
-            variant="primary" 
-            className="mt-3"
-            onClick={() => navigate("/courses")}
-          >
-            Browse Courses
-          </Button>
-        </div>
       ) : (
-        <Row className="justify-content-start g-4">
-          {wishlist.map((course) => (
-            <Col md={4} key={course.id} className="d-flex">
-              <Card className="shadow h-100 w-100">
-                <Card.Img
-                  variant="top"
-                  src={getValidThumbnail(course.image)}
-                  alt={course.title}
-                  style={{ height: "180px", objectFit: "cover" }}
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = defaultImage;
-                  }}
-                />
-                <Card.Body className="d-flex flex-column">
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <Card.Title className="fs-5 mb-0">{course.title}</Card.Title>
-                    <FaHeart
-                      className="fs-5 text-danger"
-                      style={{ cursor: "pointer" }}
-                      onClick={() => removeFromWishlist(course.id)}
+        <>
+          {infoMessage && (
+            <Alert variant="info" className="mb-4">
+              {infoMessage}
+            </Alert>
+          )}
+          
+          {wishlist.length === 0 ? (
+            <div className="text-center my-5">
+              <h5 className="text-muted">No courses in your wishlist.</h5>
+              <Button 
+                variant="primary" 
+                className="mt-3"
+                onClick={() => navigate("/courses")}
+              >
+                Browse Courses
+              </Button>
+            </div>
+          ) : (
+            <Row className="justify-content-start g-4">
+              {wishlist.map((course) => (
+                <Col md={4} key={course.id} className="d-flex">
+                  <Card className="shadow h-100 w-100">
+                    <Card.Img
+                      variant="top"
+                      src={getValidThumbnail(course.image)}
+                      alt={course.title}
+                      style={{ height: "180px", objectFit: "cover" }}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = defaultImage;
+                      }}
                     />
-                  </div>
-                  <div 
-                    className="description-wrapper flex-grow-1" 
-                    style={{ marginBottom: "10px" }}
-                    onMouseEnter={(e) => {
-                      const fullDesc = e.currentTarget.querySelector('.full-description');
-                      if (fullDesc) fullDesc.style.display = "block";
-                    }}
-                    onMouseLeave={(e) => {
-                      const fullDesc = e.currentTarget.querySelector('.full-description');
-                      if (fullDesc) fullDesc.style.display = "none";
-                    }}
-                  >
-                    {truncateDescription(course.description)}
-                  </div>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="w-100 mt-auto"
-                    onClick={() => navigate(`/courses/courseShow/${course.id}`)}
-                  >
-                    <FaChalkboardTeacher className="me-1" /> View Course
-                  </Button>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-        )}
+                    <Card.Body className="d-flex flex-column">
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <Card.Title className="fs-5 mb-0">{course.title}</Card.Title>
+                        <FaHeart
+                          className="fs-5 text-danger"
+                          style={{ cursor: "pointer" }}
+                          onClick={() => removeFromWishlist(course.id)}
+                        />
+                      </div>
+                      <div 
+                        className="description-wrapper flex-grow-1" 
+                        style={{ marginBottom: "10px" }}
+                        onMouseEnter={(e) => {
+                          const fullDesc = e.currentTarget.querySelector('.full-description');
+                          if (fullDesc) fullDesc.style.display = "block";
+                        }}
+                        onMouseLeave={(e) => {
+                          const fullDesc = e.currentTarget.querySelector('.full-description');
+                          if (fullDesc) fullDesc.style.display = "none";
+                        }}
+                      >
+                        {truncateDescription(course.description)}
+                      </div>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="w-100 mt-auto"
+                        onClick={() => navigate(`/courses/courseShow/${course.id}`)}
+                      >
+                        <FaChalkboardTeacher className="me-1" /> View Course
+                      </Button>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+          )}
+        </>
+      )}
     </Container>
   );
 };
