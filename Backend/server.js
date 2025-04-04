@@ -1,7 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors=require("cors");
-const path = require("path");
+
 const connectDb = require('./config/db');
 const commonRoutes=require("./routes/commonRoutes");
 const adminRoutes=require("./routes/adminRoutes");
