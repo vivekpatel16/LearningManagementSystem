@@ -1,13 +1,27 @@
-const video = require("../models/videoModel");
 const videoUser=require("../models/videoUserModel");
-const fs = require("fs");
-const path = require("path");
 const ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const ffprobePath = require('@ffprobe-installer/ffprobe').path;
+const { cloudinary, uploadBase64Image } = require('../config/cloudinaryConfig');
+const video = require('../models/videoModel');
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 ffmpeg.setFfprobePath(ffprobePath);
+
+// Helper function to get video duration using ffprobe
+const getVideoDuration = async (videoUrl) => {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(videoUrl, (err, metadata) => {
+      if (err) {
+        console.error("Error getting video duration with ffprobe:", err);
+        resolve(0); // Resolve with 0 instead of rejecting
+      } else {
+        const duration = metadata.format.duration || 0;
+        resolve(Math.floor(duration));
+      }
+    });
+  });
+};
 
 exports.uploadVideo = async (req, res) => {
   try {
@@ -15,34 +29,79 @@ exports.uploadVideo = async (req, res) => {
       return res.status(400).json({ message: "No video uploaded" });
     }
 
-    const { video_title, video_description, chapter_id,video_thumbnail } = req.body;
+    const { video_title, video_description, chapter_id, video_thumbnail } = req.body;
     const lastVideo = await video.findOne({ chapter_id }).sort({ order: -1 });  
     const newOrder = lastVideo ? lastVideo.order + 1 : 1;
 
-    const videoPath = path.join(__dirname, "..", "uploads/videos", req.file.filename);
-    ffmpeg.ffprobe(videoPath, async (err, metadata) => {
-      if (err) {
-        console.error("Error extracting video length:", err);
-        return res.status(500).json({ message: "Error processing video" });
+    // Cloudinary already processed the video and gives us the URL
+    const videoUrl = req.file.path;
+    
+    // Get video metadata from Cloudinary
+    const videoPublicId = req.file.filename; // Should be the public_id from Cloudinary
+    
+    let videoLength = 0; // Default to 0 if we can't get the duration
+    
+    try {
+      // Get video duration using Cloudinary's API
+      const result = await cloudinary.api.resource(videoPublicId, { resource_type: 'video' });
+      console.log(result);
+      
+      // For some videos, Cloudinary might not process duration immediately
+      // Let's try to extract it from different potential places
+      if (result.duration) {
+        videoLength = Math.floor(result.duration);
+      } else if (result.video && result.video.duration) {
+        videoLength = Math.floor(result.video.duration);
+      } else if (result.metadata && result.metadata.video && result.metadata.video.duration) {
+        videoLength = Math.floor(result.metadata.video.duration);
+      } else {
+        // If we can't get duration from Cloudinary, try to get it directly from the video
+        console.log("Could not extract duration from Cloudinary response, using ffprobe");
+        videoLength = await getVideoDuration(videoUrl);
       }
-    const videoLength = Math.floor(metadata.format.duration);
+    } catch (error) {
+      console.error("Error getting video metadata from Cloudinary:", error);
+      // Try to get duration using ffprobe
+      try {
+        videoLength = await getVideoDuration(videoUrl);
+      } catch (ffprobeError) {
+        console.error("Failed to get duration with ffprobe:", ffprobeError);
+        videoLength = 0; // Default if all methods fail
+      }
+    }
+    
+    console.log("Final video length:", videoLength);
+    
+    // Upload thumbnail to Cloudinary if provided as base64
+    let thumbnailUrl = '';
+    if (video_thumbnail && typeof video_thumbnail === 'string' && video_thumbnail.includes('base64')) {
+      try {
+        thumbnailUrl = await uploadBase64Image(video_thumbnail, 'lms-thumbnails');
+      } catch (error) {
+        console.error("Error uploading thumbnail to Cloudinary:", error);
+        return res.status(500).json({ message: "Error uploading thumbnail" });
+      }
+    } else if (video_thumbnail) {
+      // If it's already a URL, use it directly
+      thumbnailUrl = video_thumbnail;
+    }
+    
+    // Create new video with Cloudinary URL
     const newVideo = new video({
-      video_url: `/uploads/videos/${req.file.filename}`, 
+      video_url: videoUrl, 
       video_title: video_title,
       video_description: video_description,
       chapter_id: chapter_id,
-      order:newOrder,
-      video_length:videoLength,
-      video_thumbnail
+      order: newOrder,
+      video_length: videoLength,
+      video_thumbnail: thumbnailUrl || ''
     });
 
     await newVideo.save();
     res.status(201).json({ message: "Video uploaded successfully", video: newVideo });
-  });
   } catch (error) {
     console.error("Error uploading video:", error);
     res.status(500).json({ message: "Server error while uploading video" });
-
   }
 };
 
@@ -58,156 +117,198 @@ exports.getVideosByChapter = async (req, res) => {
   }
 };
 
-exports.deleteVideo=async(req,res)=>
-{
-  const {video_id}=req.params;
-    try{
-        if(!video_id)
-        {
-            return res.status(400).json({message:"video is required"});
-        }
-        const foundvideo=await video.findById(video_id);
+exports.deleteVideo = async (req, res) => {
+  try {
+    const { video_id } = req.params;
+    
+    const foundVideo = await video.findById(video_id);
+    if (!foundVideo) {
+      return res.status(404).json({ message: "Video not found" });
+    }
+    
+    // Delete from Cloudinary if it's a Cloudinary URL
+    if (foundVideo.video_url && foundVideo.video_url.includes('cloudinary.com')) {
+      try {
+        // Extract public_id from Cloudinary URL
+        const urlParts = foundVideo.video_url.split('/');
+        const publicIdWithExtension = urlParts[urlParts.length - 1];
+        const publicId = publicIdWithExtension.split('.')[0];
         
-        if(!foundvideo)
-        {
-            return res.status(404).json({message:"video does not exists"});
-        }
-        const videoPath = path.join(__dirname, "..", foundvideo.video_url);
-    if (fs.existsSync(videoPath)) {
-      fs.unlink(videoPath,(err)=>
-    {
-        if (err) {
-            console.error("Error deleting video file:", err);
-          } else {
-            console.log("Video file deleted successfully.");
-          }
-    })
+        // Delete video from Cloudinary
+        await cloudinary.uploader.destroy(publicId, { resource_type: 'video' });
+      } catch (deleteError) {
+        console.error("Error deleting video from Cloudinary:", deleteError);
+        // Continue with the deletion from DB even if Cloudinary deletion fails
+      }
     }
+    
+    // Delete the video document from the database
     await video.findByIdAndDelete(video_id);
-    res.status(200).json({message:"video deleted successfully"});
-    }
-    catch(error)
-    {
-        console.log("server error while deleteing video",error);
-        res.status(500).json({message:"server error while deleting video"});
-    }
-}
-
+    
+    res.status(200).json({ message: "Video deleted successfully" });
+  } catch (error) {
+    console.error("Server error while deleting video:", error);
+    res.status(500).json({ message: "Server error while deleting video" });
+  }
+};
 
 exports.editVideoDetails = async (req, res) => {
-  const { video_id } = req.params;
-    try {
-     
-      if (!video_id) {
-        return res.status(400).json({ message: "Video ID is required" });
-      }
-  
-      const foundVideo = await video.findById(video_id); 
-   
-      if (!foundVideo) {
-        return res.status(404).json({ message: "Video does not exist" });
-      }
-     
-      const updateFields = {}; 
-      
-      if (req.body.video_title) updateFields.video_title = req.body.video_title;
-      if (req.body.video_description) updateFields.video_description = req.body.video_description;
-      if(req.body.video_thumbnail) updateFields.video_thumbnail=req.body.video_thumbnail;
-      
-      
-      if(req.body.video_length && !req.file) {
-        updateFields.video_length = req.body.video_length;
-      }
-     
-      if (req.file) {
-        
-        const oldVideoPath = path.join(__dirname, "..", foundVideo.video_url);
-        if (fs.existsSync(oldVideoPath)) {
-          fs.unlinkSync(oldVideoPath);
-        }
-  
-        updateFields.video_url = `/uploads/videos/${req.file.filename}`;
-        
-       
-        const videoPath = path.join(__dirname, "..", "uploads/videos", req.file.filename);
-        
-      
-        return ffmpeg.ffprobe(videoPath, async (err, metadata) => {
-          if (err) {
-            console.error("Error extracting video length:", err);
-            return res.status(500).json({ message: "Error processing video" });
+  try {
+    const { video_id } = req.params;
+    const { video_title, video_description, order, video_thumbnail } = req.body;
+
+    const foundVideo = await video.findById(video_id);
+    if (!foundVideo) {
+      return res.status(404).json({ message: "Video not found" });
+    }
+
+    const updateFields = {
+      video_title: video_title || foundVideo.video_title,
+      video_description: video_description || foundVideo.video_description,
+      order: order || foundVideo.order,
+    };
+
+    // Handle thumbnail update
+    if (video_thumbnail) {
+      // Check if the thumbnail is a base64 image that needs to be uploaded
+      if (typeof video_thumbnail === 'string' && video_thumbnail.includes('base64')) {
+        try {
+          // Delete old thumbnail from Cloudinary if it exists
+          if (foundVideo.video_thumbnail && foundVideo.video_thumbnail.includes('cloudinary.com')) {
+            try {
+              const urlParts = foundVideo.video_thumbnail.split('/');
+              const publicIdWithExtension = urlParts[urlParts.length - 1];
+              const publicId = publicIdWithExtension.split('.')[0];
+              
+              await cloudinary.uploader.destroy(publicId);
+            } catch (deleteError) {
+              console.error("Error deleting old thumbnail from Cloudinary:", deleteError);
+              // Continue even if deletion fails
+            }
           }
           
+          // Upload new thumbnail
+          const thumbnailUrl = await uploadBase64Image(video_thumbnail, 'lms-thumbnails');
+          updateFields.video_thumbnail = thumbnailUrl;
+        } catch (error) {
+          console.error("Error uploading thumbnail to Cloudinary:", error);
+          return res.status(500).json({ message: "Error uploading thumbnail" });
+        }
+      } else {
+        // If it's already a URL, use it directly
+        updateFields.video_thumbnail = video_thumbnail;
+      }
+    }
+     
+    if (req.file) {
+      // If there's a Cloudinary URL of the old video, delete it
+      if (foundVideo.video_url && foundVideo.video_url.includes('cloudinary.com')) {
+        try {
+          // Extract public_id from Cloudinary URL
+          const urlParts = foundVideo.video_url.split('/');
+          const publicIdWithExtension = urlParts[urlParts.length - 1];
+          const publicId = publicIdWithExtension.split('.')[0];
           
-          const videoLength = Math.floor(metadata.format.duration);
-          console.log("Updated video length:", videoLength);
-          
-          
-          updateFields.video_length = videoLength;
-          
-         
-          const updatedVideo = await video.findByIdAndUpdate(
-            video_id,
-            { $set: updateFields },
-            { new: true }
-          );
-          
-          return res.status(200).json({ 
-            message: "Video details updated successfully", 
-            updatedVideo 
-          });
-        });
+          // Delete old video from Cloudinary
+          await cloudinary.uploader.destroy(publicId, { resource_type: 'video' });
+        } catch (deleteError) {
+          console.error("Error deleting old video from Cloudinary:", deleteError);
+          // Continue with the update even if deletion fails
+        }
+      }
+
+      // The new Cloudinary URL is in req.file.path
+      updateFields.video_url = req.file.path;
+      
+      // Get video metadata from Cloudinary
+      const videoPublicId = req.file.filename;
+      
+      let videoLength = 0;
+      try {
+        // Get video duration using Cloudinary's API
+        const result = await cloudinary.api.resource(videoPublicId, { resource_type: 'video' });
+        
+        if (result.duration) {
+          videoLength = Math.floor(result.duration);
+        } else if (result.video && result.video.duration) {
+          videoLength = Math.floor(result.video.duration);
+        } else if (result.metadata && result.metadata.video && result.metadata.video.duration) {
+          videoLength = Math.floor(result.metadata.video.duration);
+        } else {
+          // If we can't get duration from Cloudinary, try to get it directly from the video
+          videoLength = await getVideoDuration(req.file.path);
+        }
+      } catch (error) {
+        console.error("Error getting video metadata from Cloudinary:", error);
+        // Try ffprobe as fallback
+        try {
+          videoLength = await getVideoDuration(req.file.path);
+        } catch (ffprobeError) {
+          console.error("Failed to get duration with ffprobe:", ffprobeError);
+          videoLength = 0; // Default if all methods fail
+        }
       }
       
-     
+      updateFields.video_length = videoLength;
+      
       const updatedVideo = await video.findByIdAndUpdate(
         video_id,
         { $set: updateFields },
         { new: true }
       );
-  
-      res.status(200).json({ message: "Video details updated successfully", updatedVideo });
-    } catch (error) {
-      console.error("Server error while editing video details:", error);
-      res.status(500).json({ message: "Server error while editing video details" });
+      
+      return res.status(200).json({ 
+        message: "Video details updated successfully", 
+        updatedVideo 
+      });
     }
-  };
-
-  
-  exports.updateVideoOrder=async(req,res)=>
-    {
-      const {videos}=req.body;
-        try
-        {
-            if(!videos || !Array.isArray(videos))
-            {
-                return res.status(400).json({message:"invalid video data"});
-            }
-            
-            const updateOrder=videos.map((videoItem,index)=>
-            {
-              const updateData={order:index+1};
-              if(videoItem.chapter_id)
-              {
-                updateData.chapter_id=videoItem.chapter_id;
-              }
-              return video.findByIdAndUpdate(
-                videoItem.id,
-                {$set:updateData},
-                {new:true}
-              );
-            });
-           await Promise.all(updateOrder);
-           return res.status(200).json({message:"video order updated successfully"});
-        }
-        catch(error)
-        {
-            console.log("server error while updating video order",error);
-            res.status(500).json({message:"server error while updating vidoe order"});
-        }
     
-    };
+    // If no new video file, just update the other fields
+    const updatedVideo = await video.findByIdAndUpdate(
+      video_id,
+      { $set: updateFields },
+      { new: true }
+    );
 
+    res.status(200).json({ message: "Video details updated successfully", updatedVideo });
+  } catch (error) {
+    console.error("Server error while editing video details:", error);
+    res.status(500).json({ message: "Server error while editing video details" });
+  }
+};
+
+exports.updateVideoOrder=async(req,res)=>
+{
+  const {videos}=req.body;
+    try
+    {
+        if(!videos || !Array.isArray(videos))
+        {
+            return res.status(400).json({message:"invalid video data"});
+        }
+        
+        const updateOrder=videos.map((videoItem,index)=>
+        {
+          const updateData={order:index+1};
+          if(videoItem.chapter_id)
+          {
+            updateData.chapter_id=videoItem.chapter_id;
+          }
+          return video.findByIdAndUpdate(
+            videoItem.id,
+            {$set:updateData},
+            {new:true}
+          );
+        });
+       await Promise.all(updateOrder);
+       return res.status(200).json({message:"video order updated successfully"});
+    }
+    catch(error)
+    {
+        console.log("server error while updating video order",error);
+        res.status(500).json({message:"server error while updating vidoe order"});
+    }
+};
 
 exports.getVideoProgress = async (req, res) => {
   const { user_id, course_id, video_id } = req.params;

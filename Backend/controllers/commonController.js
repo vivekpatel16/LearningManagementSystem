@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const OTP = require("../models/otpModel");
 const nodemailer = require("nodemailer");
 const { generateOTP, sendEmail } = require("../config/emailConfig");
+const { uploadBase64Image, cloudinary } = require('../config/cloudinaryConfig');
 require("dotenv").config();
 
 exports.loginUser = async (req, res) => {
@@ -37,7 +38,17 @@ exports.updateProfile = async(req,res)=>{
 
     
     if (user_name) user.user_name = user_name;
-    if (user_image) user.user_image = user_image;
+    
+    // Upload base64 image to Cloudinary
+    if (user_image) {
+      try {
+        const imageUrl = await uploadBase64Image(user_image);
+        user.user_image = imageUrl;
+      } catch (error) {
+        console.error("Error uploading image to Cloudinary:", error);
+        return res.status(500).json({ message: "Error uploading profile image" });
+      }
+    }
 
     if (password) {
       user.password = password;
@@ -57,6 +68,21 @@ exports.deleteUserImage = async(req,res)=>{
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    // If there's a Cloudinary URL, delete the image from Cloudinary
+    if (user.user_image && user.user_image.includes('cloudinary.com')) {
+      try {
+        // Extract public_id from Cloudinary URL
+        const urlParts = user.user_image.split('/');
+        const publicIdWithExtension = urlParts[urlParts.length - 1];
+        const publicId = publicIdWithExtension.split('.')[0];
+        
+        // Delete image from Cloudinary
+        await cloudinary.uploader.destroy(publicId);
+      } catch (deleteError) {
+        console.error("Error deleting image from Cloudinary:", deleteError);
+        // Continue even if Cloudinary deletion fails
+      }
+    }
 
     user.user_image = "";
     await user.save();

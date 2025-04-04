@@ -2,8 +2,8 @@ const express = require("express");
 const {addCategories,allCategories,updateCategory, deleteCategory } = require("../controllers/categoryController");
 const {addCourses,deleteCourse,updateCourse, enrollCourse, checkEnrollment, getEnrolledCourses}=require("../controllers/coursesController");
 const {authenticateUser} =require("../middleware/authUserMiddleware");
-const { upload, handleMulterError } = require("../config/multerConfig");
-const {uploadVideo,getVideosByChapter,editVideoDetails,deleteVideo, updateVideoOrder, getVideoProgress, updateVideoProgress}=require("../controllers/videoController");
+const {uploadVideo, getVideosByChapter, editVideoDetails, deleteVideo, updateVideoOrder, getVideoProgress, updateVideoProgress}=require("../controllers/videoController");
+const { uploadVideo: cloudinaryUploadVideo, handleMulterError: cloudinaryMulterError } = require("../config/cloudinaryConfig");
 const {addChapter,fetchChapter,editChapter, deleteChapter, updateChapterOrder}=require("../controllers/chapterController");
 const {addRating,getRating,updateRating}=require("../controllers/ratingController");
 const {addComment, getComment, deleteComment, editComment} = require("../controllers/commentController");
@@ -28,9 +28,9 @@ router.delete("/chapter/:chapter_id",authenticateUser,deleteChapter);
 
 
 router.patch("/video/order",authenticateUser,updateVideoOrder);
-router.post("/video", authenticateUser, upload.single("video"), handleMulterError, uploadVideo);
+router.post("/video", authenticateUser, cloudinaryUploadVideo.single("video"), cloudinaryMulterError, uploadVideo);
 router.get("/video/:chapter_id",authenticateUser,getVideosByChapter);
-router.patch("/video/:video_id", authenticateUser, upload.single("video"), handleMulterError, editVideoDetails);
+router.patch("/video/:video_id", authenticateUser, cloudinaryUploadVideo.single("video"), cloudinaryMulterError, editVideoDetails);
 router.delete("/video/:video_id",authenticateUser,deleteVideo);
 
 
