@@ -12,14 +12,26 @@ connectDb();
 
 const app = express();
 
-// Improved CORS configuration for large file uploads
+const allowedOrigins = [
+    "https://learningmanagementsystem-3.onrender.com", // Frontend
+    "https://learningmanagementsystem-2-bj3z.onrender.com", // Backend
+    "http://localhost:5173" // Local Testing
+];
+
 app.use(cors({
-    origin: "*", // Allow all origins during development (change to specific origin in production)
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error("Not allowed by CORS"));
+        }
+    },
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     credentials: true,
-    maxAge: 86400 // Cache preflight request for 24 hours
+    maxAge: 86400
 }));
+
 
 // Increase payload limits for large file uploads
 app.use(express.json({ limit: '500mb' }));
