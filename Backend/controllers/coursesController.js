@@ -4,6 +4,7 @@ const Category = require("../models/categoryModel");
 const VideoUser = require("../models/videoUserModel");
 const Chapter = require("../models/chapterModel");
 const VideoInfo = require("../models/videoModel");
+const { uploadBase64Image, cloudinary } = require('../config/cloudinaryConfig');
 
 exports.addCourses = async (req, res) => {
   try {
@@ -23,11 +24,26 @@ exports.addCourses = async (req, res) => {
     if (!category) {
       return res.status(400).json({ message: "Invalid category name provided." });
     }
+
+    // Upload thumbnail to Cloudinary if it's a base64 image
+    let thumbnailUrl = '';
+    if (thumbnail && typeof thumbnail === 'string' && thumbnail.includes('base64')) {
+      try {
+        thumbnailUrl = await uploadBase64Image(thumbnail, 'lms-course-thumbnails');
+      } catch (error) {
+        console.error("Error uploading thumbnail to Cloudinary:", error);
+        return res.status(500).json({ message: "Error uploading course thumbnail" });
+      }
+    } else if (thumbnail) {
+      // If it's already a URL, use it directly
+      thumbnailUrl = thumbnail;
+    }
+    
     const newCourses = new Courses({
       title,
       description,
       category_id: category._id,
-      thumbnail,
+      thumbnail: thumbnailUrl,
       created_by: user._id,
     });
     await newCourses.save();
@@ -58,23 +74,14 @@ exports.fetchCourses = async (req, res) => {
     
     let courses;
     let instructorCoursesCount = 0;
-
-    // Admin sees all courses including deactivated ones
-    if (req.user.role === "admin") {
-      courses = await Courses.find().populate("created_by", "user_name");
-    } 
-    // Instructors only see their active courses
-    else if (req.user.role === "instructor") {
-      courses = await Courses.find({ created_by: req.user.id, status: true }).populate("created_by", "user_name");
-      instructorCoursesCount = await Courses.countDocuments({ created_by: req.user.id, status: true });
-    } 
-    // Regular users only see active courses
-    else {
-      courses = await Courses.find({ status: true }).populate("created_by", "user_name");
+    if (req.user.role === "instructor") {
+      courses = await Courses.find({ created_by: req.user.id ,status:true}).populate("created_by","user_name");
+      instructorCoursesCount = await Courses.countDocuments({ created_by: req.user.id ,status:true});
+    } else {
+      courses = await Courses.find({status:true}).populate("created_by","user_name");
     }
-
     res.status(202).json({
-      data: courses || [],
+      data:courses || [],
       totalUser,
       totalInstructor,
       activeLearnersCount,
@@ -139,7 +146,38 @@ exports.updateCourse = async (req, res) => {
     if (title) course.title = title;
     if (description) course.description = description;
     if (category_name) course.category_name = category_name;
-    if (thumbnail) course.thumbnail = thumbnail;
+    
+    // Handle thumbnail update
+    if (thumbnail) {
+      // Check if the thumbnail is a base64 image that needs to be uploaded
+      if (typeof thumbnail === 'string' && thumbnail.includes('base64')) {
+        try {
+          // Delete old thumbnail if it exists
+          if (course.thumbnail && course.thumbnail.includes('cloudinary.com')) {
+            try {
+              const urlParts = course.thumbnail.split('/');
+              const publicIdWithExtension = urlParts[urlParts.length - 1];
+              const publicId = publicIdWithExtension.split('.')[0];
+              
+              await cloudinary.uploader.destroy(publicId);
+            } catch (deleteError) {
+              console.error("Error deleting old course thumbnail from Cloudinary:", deleteError);
+              // Continue even if deletion fails
+            }
+          }
+          
+          // Upload new thumbnail
+          const thumbnailUrl = await uploadBase64Image(thumbnail, 'lms-course-thumbnails');
+          course.thumbnail = thumbnailUrl;
+        } catch (error) {
+          console.error("Error uploading course thumbnail to Cloudinary:", error);
+          return res.status(500).json({ message: "Error uploading course thumbnail" });
+        }
+      } else {
+        // If it's already a URL, use it directly
+        course.thumbnail = thumbnail;
+      }
+    }
 
     await course.save(); 
 
@@ -237,12 +275,7 @@ exports.getEnrolledCourses = async (req, res) => {
       });
     }
 
-    // Filter out enrollments for inactive courses
-    const activeEnrollments = enrollments.filter(enrollment => 
-      enrollment.course_id && enrollment.course_id.status === true
-    );
-
-    const enrolledCourses = activeEnrollments.reduce((acc, enrollment) => {
+    const enrolledCourses = enrollments.reduce((acc, enrollment) => {
       if (!enrollment.course_id) {
         console.log("Skipping enrollment with no course_id:", enrollment);
         return acc;
@@ -274,27 +307,47 @@ exports.getEnrolledCourses = async (req, res) => {
 
     console.log("Processed enrolled courses:", enrolledCourses);
 
+    
     const coursesWithProgress = await Promise.all(
       Object.values(enrolledCourses).map(async (enrollment) => {
         try {
-          const chapters = await Chapter.find({ course_id: enrollment.course._id }).sort({ order: 1 });
-          let totalVideos = 0;
-          let completedVideos = 0;
+          if (!enrollment.course || !enrollment.course._id) {
+            console.error('Invalid course data:', enrollment);
+            return null;
+          }
+
+          // Get all videos for this course
+          const chapters = await Chapter.find({ course_id: enrollment.course._id });
+          console.log(`Found chapters for course ${enrollment.course._id}:`, chapters.length);
           
-          await Promise.all(chapters.map(async (chapter) => {
-            const videos = await VideoInfo.find({ chapter_id: chapter._id });
-            totalVideos += videos.length;
-            
-            const completedVideoCount = await VideoUser.countDocuments({
-              user_id,
-              video_id: { $in: videos.map(v => v._id) },
-              completed: true
-            });
-            
-            completedVideos += completedVideoCount;
-          }));
+          const chapterIds = chapters.map(chapter => chapter._id);
+          const totalVideos = await VideoInfo.countDocuments({
+            chapter_id: { $in: chapterIds }
+          });
+
+          console.log(`Total videos for course ${enrollment.course._id}:`, totalVideos);
+
+          // Find all video progress records for this user and course
+          const videoProgressRecords = await VideoUser.find({
+            user_id,
+            course_id: enrollment.course._id
+          });
+
+          // Count completed videos
+          const completedVideos = videoProgressRecords.filter(record => record.completed).length;
           
-          const progress = totalVideos > 0 ? Math.round((completedVideos / totalVideos) * 100) : 0;
+          // Calculate partial progress for videos in progress but not completed
+          let totalPartialProgress = 0;
+          videoProgressRecords.forEach(record => {
+            if (!record.completed && record.progress_percent > 0) {
+              totalPartialProgress += record.progress_percent / 100;
+            }
+          });
+          
+          // Calculate overall progress percentage - completed videos + partial progress
+          const progress = totalVideos > 0 
+            ? Math.min(100, Math.round(((completedVideos + totalPartialProgress) / totalVideos) * 100))
+            : 0;
 
           return {
             _id: enrollment.course._id,
@@ -321,8 +374,9 @@ exports.getEnrolledCourses = async (req, res) => {
       })
     );
 
+   
     const validCourses = coursesWithProgress.filter(course => 
-      course !== null
+      course !== null && course.status !== false
     );
 
     console.log("Final valid courses:", validCourses);

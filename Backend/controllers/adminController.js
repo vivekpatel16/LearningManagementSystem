@@ -1,12 +1,5 @@
 const UserInfo = require("../models/userInfoModel");
 const CoursesInfo = require("../models/coursesInfoModel");
-const Chapter = require("../models/chapterModel");
-const VideoInfo = require("../models/videoModel");
-const VideoUser = require("../models/videoUserModel");
-const CourseRating = require("../models/CourseRatingModel");
-const Wishlist = require("../models/wishlistModel");
-const Comment = require("../models/commentModel");
-const mongoose = require("mongoose");
 
 exports.registerUser = async (req, res) => {
   if (req.user.role !== "admin") {
@@ -63,54 +56,22 @@ exports.removeUser = async (req, res) => {
     if (req.user.role !== "admin") {
       return res.status(403).json({ message: "Access denied. Only admin can delete user" });
     }
-
     const { user_id } = req.params;
+    const user = await UserInfo.findById(user_id); 
 
-    // Validate user ID
-    if (!mongoose.Types.ObjectId.isValid(user_id)) {
-      return res.status(400).json({ message: "Invalid user ID" });
-    }
-
-    const user = await UserInfo.findById(user_id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // If instructor, delete courses and related data
-    if (user.role === "instructor") {
-      const courses = await CoursesInfo.find({ created_by: user_id });
-      if (courses.length > 0) {
-        const courseIds = courses.map(course => course._id);
-        
-        console.log(`Deleting ${courses.length} courses for instructor ${user_id}`);
-
-        // Delete related data
-        await Chapter.deleteMany({ course_id: { $in: courseIds } });
-        await VideoInfo.deleteMany({ course_id: { $in: courseIds } });
-        await VideoUser.deleteMany({ course_id: { $in: courseIds } });
-        await CourseRating.deleteMany({ course_id: { $in: courseIds } });
-        await Wishlist.deleteMany({ course_id: { $in: courseIds } });
-        await Comment.deleteMany({ video_id: { $in: courseIds } });
-
-        // Delete courses
-        await CoursesInfo.deleteMany({ created_by: user_id });
-      }
-    }
-
-    // Delete user
     const deletedUser = await UserInfo.findByIdAndDelete(user_id);
-    if (!deletedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    console.log("User deleted:", deletedUser);
+    console.log("Deleted user:", deletedUser);
     res.status(200).json({ message: "User deleted successfully" });
-
   } catch (error) {
-    console.error("Error while removing user:", error.message, error.stack);
+    console.log("Error while removing user:", error);
     res.status(500).json({ message: "Server error while deleting user" });
   }
 };
+
 
 exports.updateUser = async (req,res) =>{
   try {
