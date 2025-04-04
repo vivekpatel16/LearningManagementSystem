@@ -84,34 +84,42 @@ exports.removeUser = async (req, res) => {
         console.log(`Found ${chapters.length} chapters for courses by this instructor`);
         
         if (chapterIds.length > 0) {
-          // Step 3: Delete all videos for these chapters
+          // Find all videos for these chapters
+          const videos = await VideoInfo.find({ chapter_id: { $in: chapterIds } });
+          const videoIds = videos.map(video => video._id);
+          
+          if (videoIds.length > 0) {
+            // Step 3: Delete all PDF files associated with these videos
+            const deletedPDFs = await PDF.deleteMany({ video_id: { $in: videoIds } });
+            console.log(`Deleted ${deletedPDFs.deletedCount} PDF files`);
+            
+            // Step 4: Delete all comments for videos in these courses
+            const deletedComments = await Comment.deleteMany({ video_id: { $in: videoIds } });
+            console.log(`Deleted ${deletedComments.deletedCount} comments`);
+          }
+          
+          // Step 5: Delete all videos for these chapters
           const deletedVideos = await VideoInfo.deleteMany({ chapter_id: { $in: chapterIds } });
           console.log(`Deleted ${deletedVideos.deletedCount} videos`);
         }
         
-        // Step 4: Delete all chapters for these courses
+        // Step 6: Delete all chapters for these courses
         const deletedChapters = await Chapter.deleteMany({ course_id: { $in: courseIds } });
         console.log(`Deleted ${deletedChapters.deletedCount} chapters`);
         
-        // Step 5: Delete all video progress/enrollments for these courses
+        // Step 7: Delete all video progress/enrollments for these courses
         const deletedProgress = await VideoUser.deleteMany({ course_id: { $in: courseIds } });
         console.log(`Deleted ${deletedProgress.deletedCount} video progress records`);
         
-        // Step 6: Delete all ratings for these courses
+        // Step 8: Delete all ratings for these courses
         const deletedRatings = await CourseRating.deleteMany({ course_id: { $in: courseIds } });
         console.log(`Deleted ${deletedRatings.deletedCount} course ratings`);
         
-        // Step 7: Delete all wishlist entries for these courses
+        // Step 9: Delete all wishlist entries for these courses
         const deletedWishlists = await Wishlist.deleteMany({ course_id: { $in: courseIds } });
         console.log(`Deleted ${deletedWishlists.deletedCount} wishlist entries`);
         
-        // Step 8: Delete all comments for videos in these courses
-        const videos = await VideoInfo.find({ chapter_id: { $in: chapterIds } });
-        const videoIds = videos.map(video => video._id);
-        const deletedComments = await Comment.deleteMany({ video_id: { $in: videoIds } });
-        console.log(`Deleted ${deletedComments.deletedCount} comments`);
-        
-        // Step 9: Delete all courses
+        // Step 10: Delete all courses
         const deletedCourses = await CoursesInfo.deleteMany({ created_by: user_id });
         console.log(`Deleted ${deletedCourses.deletedCount} courses`);
       }

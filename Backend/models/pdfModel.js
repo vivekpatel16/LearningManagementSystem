@@ -1,23 +1,25 @@
-const mongoose=require("mongoose");
-const pdfSchema=new mongoose.Schema(
+const mongoose = require("mongoose");
+const Video = require("./videoModel");
+const UserInfo = require("./userInfoModel");
+
+const pdfSchema = new mongoose.Schema(
     {
-        video_id:{
+        video_id: {
             type: mongoose.Schema.Types.ObjectId,
-            required:true,
-            ref:Video
+            required: true,
+            ref: "Video"
         },
-        pdf_url:{
-            type:String,
-            required:true,
+        pdf_url: {
+            type: String,
+            required: true,
         },
-        user_id:{
+        user_id: {
             type: mongoose.Schema.Types.ObjectId,
-            required:true,
-            ref:UserInfo,
+            required: true,
+            ref: "UserInfo",
         }
-    },{timestamp:true}
+    }, 
+    { timestamps: true }
 );
 
-
-
-module.export =mongoose.model("PDF",pdfSchema);
+module.exports = mongoose.model("PDF", pdfSchema);

@@ -80,7 +80,14 @@ const UserManagement = () => {
     let confirmMessage = "Are you sure you want to delete this user?";
     
     if (userToDelete?.role === "instructor") {
-      confirmMessage = "Warning: Deleting this instructor will permanently remove ALL courses created by them, including chapters, videos, and student enrollments. This action cannot be undone. Are you sure you want to proceed?";
+      confirmMessage = "WARNING: Deleting this instructor will permanently remove:\n\n" +
+        "• ALL courses created by them\n" +
+        "• ALL chapters and video content\n" +
+        "• ALL student enrollments and progress\n" +
+        "• ALL course ratings and reviews\n" +
+        "• ALL PDF materials and resources\n" +
+        "• ALL comments and discussion threads\n\n" +
+        "This action CANNOT be undone. Are you sure you want to proceed?";
     }
     
     if (window.confirm(confirmMessage)) {
