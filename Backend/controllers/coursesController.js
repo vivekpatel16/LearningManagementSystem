@@ -74,14 +74,23 @@ exports.fetchCourses = async (req, res) => {
     
     let courses;
     let instructorCoursesCount = 0;
-    if (req.user.role === "instructor") {
-      courses = await Courses.find({ created_by: req.user.id ,status:true}).populate("created_by","user_name");
-      instructorCoursesCount = await Courses.countDocuments({ created_by: req.user.id ,status:true});
-    } else {
-      courses = await Courses.find({status:true}).populate("created_by","user_name");
+
+    // Admin sees all courses including deactivated ones
+    if (req.user.role === "admin") {
+      courses = await Courses.find().populate("created_by", "user_name");
+    } 
+    // Instructors only see their active courses
+    else if (req.user.role === "instructor") {
+      courses = await Courses.find({ created_by: req.user.id, status: true }).populate("created_by", "user_name");
+      instructorCoursesCount = await Courses.countDocuments({ created_by: req.user.id, status: true });
+    } 
+    // Regular users only see active courses
+    else {
+      courses = await Courses.find({ status: true }).populate("created_by", "user_name");
     }
+
     res.status(202).json({
-      data:courses || [],
+      data: courses || [],
       totalUser,
       totalInstructor,
       activeLearnersCount,
