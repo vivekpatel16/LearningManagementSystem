@@ -2,11 +2,12 @@ const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
 
-// Configure Cloudinary
+// Configure Cloudinary with improved timeout settings
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  timeout: 600000 // 10 minute timeout for large uploads
 });
 
 // Configure video storage
@@ -16,7 +17,9 @@ const videoStorage = new CloudinaryStorage({
     folder: 'lms-videos',
     resource_type: 'video',
     allowed_formats: ['mp4', 'webm', 'ogg', 'mov'],
-    transformation: [{ quality: 'auto' }]
+    transformation: [{ quality: 'auto' }],
+    chunk_size: 6000000, // 6MB chunks for more stable uploads
+    timeout: 600000 // 10 minutes timeout
   },
 });
 
@@ -34,7 +37,7 @@ const imageStorage = new CloudinaryStorage({
 const uploadVideo = multer({ 
   storage: videoStorage,
   limits: {
-    fileSize: 1000 * 1024 * 1024, // 100MB limit for free tier
+    fileSize: 500 * 1024 * 1024, // 500MB limit
   }
 });
 
@@ -51,13 +54,15 @@ const handleMulterError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
-        message: 'File is too large. Maximum size is 100MB for videos and 10MB for images'
+        message: 'File is too large. Maximum size is 500MB for videos and 10MB for images'
       });
     }
+    console.error('Multer error:', err);
     return res.status(400).json({
       message: `Upload error: ${err.message}`
     });
   } else if (err) {
+    console.error('Upload error:', err);
     return res.status(400).json({
       message: err.message
     });
@@ -75,7 +80,10 @@ const uploadBase64Image = async (base64Image, folder = 'lms-profile-images') => 
     
     const result = await cloudinary.uploader.upload(
       `data:image/png;base64,${base64WithoutPrefix}`, 
-      { folder: folder }
+      { 
+        folder: folder,
+        timeout: 120000 // 2 minute timeout for image uploads
+      }
     );
     
     return result.secure_url;
