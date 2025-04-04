@@ -12,25 +12,32 @@ connectDb();
 
 const app = express();
 
+// Improved CORS configuration for large file uploads
 app.use(cors({
-  origin: [
-    "https://learningmanagementsystem-3.onrender.com", // Frontend
-    "https://learningmanagementsystem-2-bj3z.onrender.com", // Backend
-    "http://localhost:5173" // Local testing
-  ],
-  methods: ["GET", "POST", "PATCH", "DELETE"],
-  credentials: true
+    origin: "*", // Allow all origins during development (change to specific origin in production)
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    credentials: true,
+    maxAge: 86400 // Cache preflight request for 24 hours
 }));
 
-
-
+// Increase payload limits for large file uploads
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ limit: '500mb', extended: true }));
-// app.use("/uploads",express.static("uploads"));
+
+// Increase timeout for large uploads
+app.use((req, res, next) => {
+    // Set timeout to 10 minutes for all requests
+    req.setTimeout(10 * 60 * 1000);
+    res.setTimeout(10 * 60 * 1000);
+    next();
+});
+
+// Routes
 app.use("/api/users",commonRoutes);
 app.use("/api/admin",adminRoutes);
 app.use("/api/courses",coursesRoutes);
 app.use("/api/wishlist",wishlistRoutes);
 
-const PORT =5000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
