@@ -1,3 +1,4 @@
+const video = require("../models/videoModel");
 const videoUser=require("../models/videoUserModel");
 const fs = require("fs");
 const path = require("path");
