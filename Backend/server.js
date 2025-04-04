@@ -12,11 +12,11 @@ connectDb();
 
 const app = express();
 
-// app.use(cors({ origin: 'https://learningmanagementsystem-6yfw.onrender.com/' , credentials: true }));
 app.use(cors({
   origin: [
-    "https://learningmanagementsystem-3.onrender.com", // your deployed frontend
-    "http://localhost:5173"                             // your local frontend
+    "https://learningmanagementsystem-3.onrender.com", // Frontend
+    "https://learningmanagementsystem-2-bj3z.onrender.com", // Backend
+    "http://localhost:5173" // Local testing
   ],
   methods: ["GET", "POST", "PATCH", "DELETE"],
   credentials: true
