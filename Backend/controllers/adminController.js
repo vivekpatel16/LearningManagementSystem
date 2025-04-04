@@ -62,78 +62,54 @@ exports.removeUser = async (req, res) => {
     if (req.user.role !== "admin") {
       return res.status(403).json({ message: "Access denied. Only admin can delete user" });
     }
-    const { user_id } = req.params;
-    const user = await UserInfo.findById(user_id); 
 
+    const { user_id } = req.params;
+
+    // Validate user ID
+    if (!mongoose.Types.ObjectId.isValid(user_id)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    const user = await UserInfo.findById(user_id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    // If the user is an instructor, delete all their courses and related data
+
+    // If instructor, delete courses and related data
     if (user.role === "instructor") {
-      // Step 1: Find all courses created by this instructor
       const courses = await CoursesInfo.find({ created_by: user_id });
-      const courseIds = courses.map(course => course._id);
-      
-      console.log(`Found ${courses.length} courses created by instructor ${user_id}`);
-      
-      if (courseIds.length > 0) {
-        // Step 2: Find all chapters for these courses
-        const chapters = await Chapter.find({ course_id: { $in: courseIds } });
-        const chapterIds = chapters.map(chapter => chapter._id);
+      if (courses.length > 0) {
+        const courseIds = courses.map(course => course._id);
         
-        console.log(`Found ${chapters.length} chapters for courses by this instructor`);
-        
-        if (chapterIds.length > 0) {
-          // Find all videos for these chapters
-          const videos = await VideoInfo.find({ chapter_id: { $in: chapterIds } });
-          const videoIds = videos.map(video => video._id);
-          
-          if (videoIds.length > 0) {
-            // Step 3: Delete all PDF files associated with these videos
-            const deletedPDFs = await PDF.deleteMany({ video_id: { $in: videoIds } });
-            console.log(`Deleted ${deletedPDFs.deletedCount} PDF files`);
-            
-            // Step 4: Delete all comments for videos in these courses
-            const deletedComments = await Comment.deleteMany({ video_id: { $in: videoIds } });
-            console.log(`Deleted ${deletedComments.deletedCount} comments`);
-          }
-          
-          // Step 5: Delete all videos for these chapters
-          const deletedVideos = await VideoInfo.deleteMany({ chapter_id: { $in: chapterIds } });
-          console.log(`Deleted ${deletedVideos.deletedCount} videos`);
-        }
-        
-        // Step 6: Delete all chapters for these courses
-        const deletedChapters = await Chapter.deleteMany({ course_id: { $in: courseIds } });
-        console.log(`Deleted ${deletedChapters.deletedCount} chapters`);
-        
-        // Step 7: Delete all video progress/enrollments for these courses
-        const deletedProgress = await VideoUser.deleteMany({ course_id: { $in: courseIds } });
-        console.log(`Deleted ${deletedProgress.deletedCount} video progress records`);
-        
-        // Step 8: Delete all ratings for these courses
-        const deletedRatings = await CourseRating.deleteMany({ course_id: { $in: courseIds } });
-        console.log(`Deleted ${deletedRatings.deletedCount} course ratings`);
-        
-        // Step 9: Delete all wishlist entries for these courses
-        const deletedWishlists = await Wishlist.deleteMany({ course_id: { $in: courseIds } });
-        console.log(`Deleted ${deletedWishlists.deletedCount} wishlist entries`);
-        
-        // Step 10: Delete all courses
-        const deletedCourses = await CoursesInfo.deleteMany({ created_by: user_id });
-        console.log(`Deleted ${deletedCourses.deletedCount} courses`);
+        console.log(`Deleting ${courses.length} courses for instructor ${user_id}`);
+
+        // Delete related data
+        await Chapter.deleteMany({ course_id: { $in: courseIds } });
+        await VideoInfo.deleteMany({ course_id: { $in: courseIds } });
+        await VideoUser.deleteMany({ course_id: { $in: courseIds } });
+        await CourseRating.deleteMany({ course_id: { $in: courseIds } });
+        await Wishlist.deleteMany({ course_id: { $in: courseIds } });
+        await Comment.deleteMany({ video_id: { $in: courseIds } });
+
+        // Delete courses
+        await CoursesInfo.deleteMany({ created_by: user_id });
       }
     }
 
+    // Delete user
     const deletedUser = await UserInfo.findByIdAndDelete(user_id);
-    console.log("Deleted user:", deletedUser);
+    if (!deletedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log("User deleted:", deletedUser);
     res.status(200).json({ message: "User deleted successfully" });
+
   } catch (error) {
-    console.log("Error while removing user:", error);
+    console.error("Error while removing user:", error.message, error.stack);
     res.status(500).json({ message: "Server error while deleting user" });
   }
 };
-
 
 exports.updateUser = async (req,res) =>{
   try {
