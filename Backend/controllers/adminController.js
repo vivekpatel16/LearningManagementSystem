@@ -58,8 +58,6 @@ exports.courseStatus = async (req, res) => {
   }
 };
 
-
-
 exports.removeUser = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
