@@ -14,10 +14,14 @@ const app = express();
 
 // app.use(cors({ origin: 'https://learningmanagementsystem-6yfw.onrender.com/' , credentials: true }));
 app.use(cors({
-    origin: "https://learningmanagementsystem-3.onrender.com", // Allow frontend domain
-    methods: ["GET", "POST", "PATCH", "DELETE"],
-    credentials: true
+  origin: [
+    "https://learningmanagementsystem-3.onrender.com", // your deployed frontend
+    "http://localhost:5173"                             // your local frontend
+  ],
+  methods: ["GET", "POST", "PATCH", "DELETE"],
+  credentials: true
 }));
+
 
 
 app.use(express.json({ limit: '500mb' }));
