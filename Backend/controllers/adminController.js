@@ -6,6 +6,7 @@ const VideoUser = require("../models/videoUserModel");
 const CourseRating = require("../models/CourseRatingModel");
 const Wishlist = require("../models/wishlistModel");
 const Comment = require("../models/commentModel");
+const mongoose = require("mongoose");
 
 exports.registerUser = async (req, res) => {
   if (req.user.role !== "admin") {
