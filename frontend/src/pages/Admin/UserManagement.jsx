@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Container, Table, Button, Modal, Form, Card, InputGroup, FormControl, Toast } from "react-bootstrap";
+import { Container, Table, Button, Modal, Form, Card, InputGroup, FormControl, Toast, Spinner } from "react-bootstrap";
 import { FaUserEdit, FaTrash, FaPlus, FaSearch, FaEye, FaEyeSlash } from "react-icons/fa";
 import Admin_API from "../../Api/adminApi";
 
@@ -12,6 +12,7 @@ const UserManagement = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastVariant, setToastVariant] = useState("success");
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Separate states for new users and existing users
   const [newUser, setNewUser] = useState({ user_name: "", email: "", password: "", role: "user" });
@@ -75,8 +76,16 @@ const UserManagement = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
+    const userToDelete = users.find(user => user._id === id);
+    let confirmMessage = "Are you sure you want to delete this user?";
+    
+    if (userToDelete?.role === "instructor") {
+      confirmMessage = "Warning: Deleting this instructor will permanently remove ALL courses created by them, including chapters, videos, and student enrollments. This action cannot be undone. Are you sure you want to proceed?";
+    }
+    
+    if (window.confirm(confirmMessage)) {
       try {
+        setDeleteLoading(true);
         const response = await Admin_API.delete(`/user/${id}`);
         if (response.status === 200) {
           setUsers(users.filter((user) => user._id !== id));
@@ -85,6 +94,8 @@ const UserManagement = () => {
       } catch (error) {
         showToastMessage("Failed to delete user", "danger");
         console.error("Error deleting user:", error);
+      } finally {
+        setDeleteLoading(false);
       }
     }
   };
@@ -183,8 +194,13 @@ const UserManagement = () => {
                       <Button variant="secondary" size="sm" className="me-2" onClick={() => handleShowModal("Edit", user)}>
                         <FaUserEdit /> Edit
                       </Button>
-                      <Button variant="danger" size="sm" onClick={() => handleDelete(user._id)}>
-                        <FaTrash /> Delete
+                      <Button 
+                        variant="danger" 
+                        size="sm" 
+                        onClick={() => handleDelete(user._id)}
+                        disabled={deleteLoading}
+                      >
+                        {deleteLoading ? <Spinner size="sm" animation="border" /> : <FaTrash />} Delete
                       </Button>
                     </td>
                   </tr>
