@@ -200,6 +200,7 @@ exports.editVideoDetails = async (req, res) => {
       }
     }
      
+    let videoLength = 0;
     if (req.file) {
       // If there's a Cloudinary URL of the old video, delete it
       if (foundVideo.video_url && foundVideo.video_url.includes('cloudinary.com')) {
@@ -223,7 +224,6 @@ exports.editVideoDetails = async (req, res) => {
       // Get video metadata from Cloudinary
       const videoPublicId = req.file.filename;
       
-      let videoLength = 0;
       try {
         // Get video duration using Cloudinary's API
         const result = await cloudinary.api.resource(videoPublicId, { resource_type: 'video' });
@@ -250,27 +250,30 @@ exports.editVideoDetails = async (req, res) => {
       }
       
       updateFields.video_length = videoLength;
-      
-      const updatedVideo = await video.findByIdAndUpdate(
-        video_id,
-        { $set: updateFields },
-        { new: true }
-      );
-      
-      return res.status(200).json({ 
-        message: "Video details updated successfully", 
-        updatedVideo 
-      });
+    } else {
+      // If no new video file, try to get video length from existing URL
+      try {
+        videoLength = await getVideoDuration(foundVideo.video_url);
+        if (videoLength > 0) {
+          updateFields.video_length = videoLength;
+        }
+      } catch (error) {
+        console.error("Error getting video duration from existing URL:", error);
+        // Keep the existing video_length if we can't get a new one
+        updateFields.video_length = foundVideo.video_length || 0;
+      }
     }
     
-    // If no new video file, just update the other fields
     const updatedVideo = await video.findByIdAndUpdate(
       video_id,
       { $set: updateFields },
       { new: true }
     );
 
-    res.status(200).json({ message: "Video details updated successfully", updatedVideo });
+    res.status(200).json({ 
+      message: "Video details updated successfully", 
+      updatedVideo 
+    });
   } catch (error) {
     console.error("Server error while editing video details:", error);
     res.status(500).json({ message: "Server error while editing video details" });

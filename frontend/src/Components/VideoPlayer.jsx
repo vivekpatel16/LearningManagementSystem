@@ -415,14 +415,12 @@ const VideoPlayer = () => {
                 newMap.set(currentLesson._id, {
                     watchedTime: currentTime,
                     duration: duration,
-                    percent: percent
+                    percent: percent,
+                    video_length: currentLesson.video_length || duration // Store both the original video_length and current duration
                 });
                 return newMap;
             });
         }
-
-        // Don't update course progress immediately while watching
-        // It will be updated when saveVideoProgress is called
 
         // Save video progress to backend
         if (currentLesson?._id && courseData?._id && percent > 0) {
@@ -880,43 +878,35 @@ const VideoPlayer = () => {
     // Add the loadVideoProgress function to fetch progress when switching videos
     const loadVideoProgress = async (videoId) => {
         try {
-            if (!videoId) {
-                console.error("Invalid videoId provided to loadVideoProgress");
-                return;
-            }
-
             const token = localStorage.getItem('token');
-            if (!token) return;
-
+            if (!token || !courseData?._id) return;
+            
             const tokenPayload = JSON.parse(atob(token.split('.')[1]));
             const userId = tokenPayload.id;
-            const courseId = courseData?._id;
-
-            if (!userId || !courseId) return;
-
-            console.log("Fetching video progress for: ", { userId, courseId, videoId });
-
+            
             const response = await axiosInstance.get(
-                `/courses/video/progress/${userId}/${courseId}/${videoId}`,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
+                `/courses/video/progress/${userId}/${courseData._id}/${videoId}`,
+                { headers: { Authorization: `Bearer ${token}` } }
             );
-
-            console.log("Video progress response:", response.data);
-
+            
             if (response.data.success && response.data.data) {
                 const { current_time, completed, progress_percent, course_progress } = response.data.data;
                 
                 console.log("Setting video time to:", current_time);
+                
+                // Get the current video's duration from the video element or progress map
+                const currentDuration = videoRef.current?.duration || 
+                    videoProgressMap.get(videoId)?.duration || 
+                    currentLesson?.video_length || 0;
                 
                 // Store the progress data in the map
                 setVideoProgressMap(prev => {
                     const newMap = new Map(prev);
                     newMap.set(videoId, {
                         watchedTime: current_time,
-                        duration: videoRef.current?.duration || 0,
-                        percent: progress_percent || 0
+                        duration: currentDuration,
+                        percent: progress_percent || 0,
+                        video_length: currentLesson?.video_length || currentDuration
                     });
                     return newMap;
                 });
@@ -926,7 +916,7 @@ const VideoPlayer = () => {
                     setProgress(progress_percent);
                 }
                 
-                // Mark video as completed if needed - IMPORTANT: use the completed flag from server
+                // Mark video as completed if needed
                 if (completed) {
                     setCompletedLessons(prev => {
                         if (!prev.has(videoId)) {
@@ -935,7 +925,6 @@ const VideoPlayer = () => {
                         return prev;
                     });
                 } else {
-                    // If server says it's not completed, make sure to remove it from completedLessons
                     setCompletedLessons(prev => {
                         if (prev.has(videoId)) {
                             const newSet = new Set([...prev]);
@@ -947,12 +936,9 @@ const VideoPlayer = () => {
                 }
                 
                 // Set video time if possible
-                if (current_time > 0) {
-                    // If video element is already loaded, set time directly
-                    if (videoRef.current && videoRef.current.readyState >= 2) {
-                        console.log("Video already loaded, setting time immediately");
-                        videoRef.current.currentTime = current_time;
-                    }
+                if (current_time > 0 && videoRef.current && videoRef.current.readyState >= 2) {
+                    console.log("Video already loaded, setting time immediately");
+                    videoRef.current.currentTime = current_time;
                 }
                 
                 // Update course progress from server response if available
@@ -1427,7 +1413,22 @@ const VideoPlayer = () => {
                                         }}
                                         onLoadedMetadata={(e) => {
                                             console.log("Video metadata loaded, duration:", e.target.duration);
-                                            setVideoDuration(e.target.duration);
+                                            const duration = e.target.duration;
+                                            setVideoDuration(duration);
+                                            
+                                            // Update the video length in the progress map
+                                            if (currentLesson?._id) {
+                                                setVideoProgressMap(prev => {
+                                                    const newMap = new Map(prev);
+                                                    const existingProgress = newMap.get(currentLesson._id) || {};
+                                                    newMap.set(currentLesson._id, {
+                                                        ...existingProgress,
+                                                        duration: duration,
+                                                        video_length: currentLesson.video_length || duration
+                                                    });
+                                                    return newMap;
+                                                });
+                                            }
                                             
                                             // Always try to load progress when video metadata is loaded
                                             if (currentLesson?._id) {
