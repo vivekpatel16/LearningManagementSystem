@@ -16,10 +16,8 @@ const videoStorage = new CloudinaryStorage({
   params: {
     folder: 'lms-videos',
     resource_type: 'video',
-    allowed_formats: ['mp4', 'webm', 'ogg', 'mov'],
-    transformation: [{ quality: 'auto' }],
-    chunk_size: 6000000, // 6MB chunks for more stable uploads
-    timeout: 600000 // 10 minutes timeout
+    allowed_formats: ['mp4', 'webm', 'ogg', 'mov']
+    // ❌ Removed transformation because it causes sync processing error
   },
 });
 
@@ -73,7 +71,6 @@ const handleMulterError = (err, req, res, next) => {
 // Function to upload base64 image directly
 const uploadBase64Image = async (base64Image, folder = 'lms-profile-images') => {
   try {
-    // Remove the prefix from the base64 string if it exists
     const base64WithoutPrefix = base64Image.includes('base64,') 
       ? base64Image.split('base64,')[1] 
       : base64Image;
@@ -99,4 +96,4 @@ module.exports = {
   uploadImage, 
   handleMulterError,
   uploadBase64Image
-}; 
+};
