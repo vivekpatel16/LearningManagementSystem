@@ -152,7 +152,7 @@ exports.getLearnerReport = async (req, res) => {
     const instructorCourses = await CoursesInfo.find({ created_by: instructorId }).select('_id');
     const courseIds = instructorCourses.map(course => course._id);
 
-    const learnerData = await VideoUserModel.find({ course_id: { $in: courseIds } });
+    const learnerData = await VideoUser.find({ course_id: { $in: courseIds } });
 
     const learnerMap = {};
 
