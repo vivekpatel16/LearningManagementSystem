@@ -170,6 +170,17 @@ exports.getLearnerReport = async (req, res) => {
     const activeCourses = await CoursesInfo.find({ status: true }).select('_id');
     const courseIds = activeCourses.map(course => course._id);
 
+    // Get all videos for each course
+    const courseVideos = await VideoInfo.find({ course_id: { $in: courseIds } });
+    const videosByCourse = {};
+    courseVideos.forEach(video => {
+      const courseId = video.course_id.toString();
+      if (!videosByCourse[courseId]) {
+        videosByCourse[courseId] = [];
+      }
+      videosByCourse[courseId].push(video._id.toString());
+    });
+
     // Process each learner's data
     const response = await Promise.all(learners.map(async (learner, index) => {
       // Get all video progress records for this learner
@@ -180,12 +191,35 @@ exports.getLearnerReport = async (req, res) => {
 
       // Calculate metrics
       const enrolledCourses = new Set(learnerProgress.map(record => record.course_id.toString()));
-      const completedVideos = learnerProgress.filter(record => record.completed).length;
-      const totalVideos = learnerProgress.length;
+      const completedCourses = new Set();
       
+      // Check each enrolled course for completion
+      for (const courseId of enrolledCourses) {
+        const courseVideoIds = videosByCourse[courseId] || [];
+        if (courseVideoIds.length === 0) continue;
+
+        // Get all video progress for this course
+        const courseProgress = learnerProgress.filter(
+          record => record.course_id.toString() === courseId
+        );
+
+        // Check if all videos in the course are completed
+        const allVideosCompleted = courseVideoIds.every(videoId => 
+          courseProgress.some(progress => 
+            progress.video_id.toString() === videoId && progress.completed
+          )
+        );
+
+        if (allVideosCompleted) {
+          completedCourses.add(courseId);
+        }
+      }
+
       // Calculate average progress
       const totalProgress = learnerProgress.reduce((sum, record) => sum + (record.progress_percent || 0), 0);
-      const avgProgress = totalVideos > 0 ? Math.round(totalProgress / totalVideos) : 0;
+      const avgProgress = learnerProgress.length > 0 
+        ? Math.round(totalProgress / learnerProgress.length)
+        : 0;
 
       return {
         index: index + 1,
@@ -193,7 +227,7 @@ exports.getLearnerReport = async (req, res) => {
         email: learner.email,
         progress: `${avgProgress}%`,
         enrolledCourses: enrolledCourses.size,
-        completedCourses: completedVideos,
+        completedCourses: completedCourses.size,
         status: avgProgress >= 70 ? 'Active' : 'Inactive'
       };
     }));
