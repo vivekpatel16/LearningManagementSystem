@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Container, Table, Button, Card, Form, Spinner } from "react-bootstrap";
 import { FaFilePdf } from "react-icons/fa";
-import common_API from "../../Api/commonApi";
 import Admin_API from "../../Api/adminApi";
+
 const Reports = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [reports, setReports] = useState([]);
@@ -14,6 +14,7 @@ const Reports = () => {
       try {
         setLoading(true);
         const response = await Admin_API.get("/learner-report");
+        console.log("API Response:", response.data); // Debug log
         if (response.status === 200) {
           setReports(response.data.data || []);
         }
@@ -33,7 +34,8 @@ const Reports = () => {
   };
 
   const filteredReports = reports.filter((report) =>
-    report.name.toLowerCase().includes(searchTerm.toLowerCase())
+    report.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    report.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -43,7 +45,7 @@ const Reports = () => {
           <h4 className="mb-0">Learner Reports</h4>
           <Form.Control
             type="text"
-            placeholder="Search by name..."
+            placeholder="Search by name or email..."
             value={searchTerm}
             onChange={handleSearch}
             className="w-25"
@@ -61,7 +63,9 @@ const Reports = () => {
               <tr>
                 <th>Index</th>
                 <th>Name</th>
+                <th>Email</th>
                 <th>Progress</th>
+                <th>Enrolled Courses</th>
                 <th>Completed Courses</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -72,9 +76,15 @@ const Reports = () => {
                 <tr key={report.index}>
                   <td>{report.index}</td>
                   <td>{report.name}</td>
+                  <td>{report.email}</td>
                   <td>{report.progress}</td>
+                  <td>{report.enrolledCourses}</td>
                   <td>{report.completedCourses}</td>
-                  <td>{report.status}</td>
+                  <td>
+                    <span className={`badge ${report.status === 'Active' ? 'bg-success' : 'bg-warning'}`}>
+                      {report.status}
+                    </span>
+                  </td>
                   <td>
                     <Button variant="danger" size="sm">
                       <FaFilePdf /> Generate PDF
@@ -84,7 +94,7 @@ const Reports = () => {
               ))}
               {filteredReports.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="text-center">
+                  <td colSpan="8" className="text-center">
                     No users found
                   </td>
                 </tr>

@@ -147,49 +147,67 @@ exports.updateUser = async (req,res) =>{
 
 exports.getLearnerReport = async (req, res) => {
   try {
-    const instructorId = req.user.id;
-
-    const instructorCourses = await CoursesInfo.find({ created_by: instructorId }).select('_id');
-    const courseIds = instructorCourses.map(course => course._id);
-
-    const learnerData = await VideoUser.find({ course_id: { $in: courseIds } });
-
-    const learnerMap = {};
-
-    for (const record of learnerData) {
-      const uid = record.user_id.toString();
-
-      if (!learnerMap[uid]) {
-        learnerMap[uid] = {
-          totalProgress: 0,
-          videoCount: 0,
-          completedCourses: new Set()
-        };
-      }
-
-      learnerMap[uid].totalProgress += record.progress_percent || 0;
-      learnerMap[uid].videoCount += 1;
-
-      if (record.completed) {
-        learnerMap[uid].completedCourses.add(record.course_id.toString());
-      }
+    // Check if user is admin
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Access denied. Only admin can view learner reports" 
+      });
     }
 
-    const response = await Promise.all(Object.entries(learnerMap).map(async ([uid, data], index) => {
-      const user = await UserInfo.findById(uid).select('user_name');
-      const avgProgress = Math.round(data.totalProgress / data.videoCount);
+    // Get all users with role 'user' (learners)
+    const learners = await UserInfo.find({ role: 'user' }).select('_id user_name email');
+    
+    if (learners.length === 0) {
+      return res.status(200).json({ 
+        success: true, 
+        data: [],
+        message: "No learners found"
+      });
+    }
+
+    // Get all active courses
+    const activeCourses = await CoursesInfo.find({ status: true }).select('_id');
+    const courseIds = activeCourses.map(course => course._id);
+
+    // Process each learner's data
+    const response = await Promise.all(learners.map(async (learner, index) => {
+      // Get all video progress records for this learner
+      const learnerProgress = await VideoUser.find({
+        user_id: learner._id,
+        course_id: { $in: courseIds }
+      });
+
+      // Calculate metrics
+      const enrolledCourses = new Set(learnerProgress.map(record => record.course_id.toString()));
+      const completedVideos = learnerProgress.filter(record => record.completed).length;
+      const totalVideos = learnerProgress.length;
+      
+      // Calculate average progress
+      const totalProgress = learnerProgress.reduce((sum, record) => sum + (record.progress_percent || 0), 0);
+      const avgProgress = totalVideos > 0 ? Math.round(totalProgress / totalVideos) : 0;
+
       return {
         index: index + 1,
-        name: user?.user_name || "Unknown",
+        name: learner.user_name,
+        email: learner.email,
         progress: `${avgProgress}%`,
-        completedCourses: data.completedCourses.size,
+        enrolledCourses: enrolledCourses.size,
+        completedCourses: completedVideos,
         status: avgProgress >= 70 ? 'Active' : 'Inactive'
       };
     }));
 
-    res.status(200).json({ success: true, data: response });
+    res.status(200).json({ 
+      success: true, 
+      data: response 
+    });
   } catch (error) {
-    console.log("server error while generating report",error);
-    res.status(500).json({ success: false, message: 'Error generating report' });
+    console.error("Server error while generating report:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error generating report',
+      error: error.message 
+    });
   }
 };
