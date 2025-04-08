@@ -14,15 +14,18 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await common_API.get("/courses"); 
-        const result =response.data;
-        console.log(response);
-        if (response.status==200||response.status==202) {
-          setCourses(result.data || []);
-          // setTotalEnrolled(result.totalUser || 0);
-          setInstructorCoursesCount(result.instructorCoursesCount || 0); 
-        } else {
-          console.error("Error fetching courses:", result.message);
+        // Fetch courses data
+        const coursesResponse = await common_API.get("/courses"); 
+        const coursesResult = coursesResponse.data;
+        if (coursesResponse.status === 200 || coursesResponse.status === 202) {
+          setCourses(coursesResult.data || []);
+          setInstructorCoursesCount(coursesResult.instructorCoursesCount || 0); 
+        }
+
+        // Fetch enrolled learners count
+        const enrolledResponse = await common_API.get("/courses/instructor/enrolled-learners");
+        if (enrolledResponse.status === 200) {
+          setTotalEnrolled(enrolledResponse.data.data.totalEnrolledLearners || 0);
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -56,7 +59,6 @@ const Dashboard = () => {
             </Card>
           </Col>
 
-      
           <Col md={6}>
             <Card className="shadow-sm p-3 mb-4 cursor-pointer" onClick={() => setShowCourses(true)}> 
               <Card.Body className="d-flex align-items-center">
@@ -71,7 +73,6 @@ const Dashboard = () => {
         </Row>
       )}
 
-      
       <Modal show={showCourses} onHide={() => setShowCourses(false)} size="lg">
         <Modal.Header closeButton>
           <Modal.Title>Courses Added</Modal.Title>
