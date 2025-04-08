@@ -347,24 +347,57 @@ exports.getVideoProgress = async (req, res) => {
       
       // If we don't have a stored progress_percent but have a current_time, try to calculate it
       if (progressPercent === 0 && progress.current_time > 0) {
-        // Get the video details to calculate progress percentage
-        const videoDetails = await video.findById(video_id);
-        
-        if (videoDetails && videoDetails.video_length > 0) {
-          progressPercent = Math.min(
-            ((progress.current_time || 0) / videoDetails.video_length) * 100,
-            100
-          );
+        try {
+          // Get the video details to calculate progress percentage
+          const videoDetails = await video.findById(video_id);
           
-          // Update the progress record with the calculated percentage for future use
-          await videoUser.findByIdAndUpdate(
-            progress._id,
-            { progress_percent: progressPercent },
-            { new: true }
-          );
-        } else {
-          // If we don't have video details but have saved time, set progress to a positive value
-          progressPercent = 1; // Just indicate some progress has been made
+          if (videoDetails) {
+            // Ensure we have a valid video_length, fallback to a default if missing
+            let videoLength = videoDetails.video_length;
+            
+            // If video_length is not set or is zero, try to calculate it from the video URL
+            if (!videoLength || videoLength <= 0) {
+              try {
+                videoLength = await getVideoDuration(videoDetails.video_url);
+                
+                // Save the updated video_length to the video record if we got a valid duration
+                if (videoLength > 0) {
+                  await video.findByIdAndUpdate(
+                    video_id,
+                    { $set: { video_length: videoLength } },
+                    { new: true }
+                  );
+                  console.log(`Updated missing video_length for video ${video_id} to ${videoLength}`);
+                }
+              } catch (durationError) {
+                console.error(`Error getting video duration for ${video_id}:`, durationError);
+                videoLength = 0;
+              }
+            }
+            
+            if (videoLength > 0) {
+              progressPercent = Math.min(
+                ((progress.current_time || 0) / videoLength) * 100,
+                100
+              );
+              
+              // Update the progress record with the calculated percentage for future use
+              await videoUser.findByIdAndUpdate(
+                progress._id,
+                { progress_percent: progressPercent },
+                { new: true }
+              );
+            } else {
+              // If we still don't have a valid video length but have saved time, set progress to a positive value
+              progressPercent = 1; // Just indicate some progress has been made
+            }
+          } else {
+            // If we don't have video details but have saved time, set progress to a positive value
+            progressPercent = 1; // Just indicate some progress has been made
+          }
+        } catch (error) {
+          console.error("Error calculating progress percent:", error);
+          progressPercent = progress.progress_percent || 1;
         }
       }
 

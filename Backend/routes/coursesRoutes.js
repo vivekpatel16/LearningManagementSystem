@@ -1,6 +1,6 @@
 const express = require("express");
 const {addCategories,allCategories,updateCategory, deleteCategory } = require("../controllers/categoryController");
-const {addCourses,deleteCourse,updateCourse, enrollCourse, checkEnrollment, getEnrolledCourses}=require("../controllers/coursesController");
+const {addCourses,deleteCourse,updateCourse, enrollCourse, checkEnrollment, getEnrolledCourses, getInstructorEnrolledLearners}=require("../controllers/coursesController");
 const {authenticateUser} =require("../middleware/authUserMiddleware");
 const {uploadVideo, getVideosByChapter, editVideoDetails, deleteVideo, updateVideoOrder, getVideoProgress, updateVideoProgress}=require("../controllers/videoController");
 const { uploadVideo: cloudinaryUploadVideo, handleMulterError: cloudinaryMulterError } = require("../config/cloudinaryConfig");
@@ -76,5 +76,7 @@ router.delete("/comment/:comment_id", authenticateUser, deleteComment);
 router.post("/:course_id/enroll", authenticateUser, enrollCourse);
 router.get("/enrollment/:course_id", authenticateUser, checkEnrollment);
 router.get("/enrolled", authenticateUser, getEnrolledCourses);
+
+router.get("/instructor/enrolled-learners", authenticateUser, getInstructorEnrolledLearners);
 
 module.exports = router;

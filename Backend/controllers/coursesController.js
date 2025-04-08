@@ -405,3 +405,45 @@ exports.getEnrolledCourses = async (req, res) => {
     });
   }
 };
+
+exports.getInstructorEnrolledLearners = async (req, res) => {
+  try {
+    const instructor_id = req.user.id;
+
+    // First, get all active courses created by this instructor
+    const instructorCourses = await Courses.find({ 
+      created_by: instructor_id,
+      status: true 
+    }).select('_id');
+
+    if (!instructorCourses || instructorCourses.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          totalEnrolledLearners: 0
+        }
+      });
+    }
+
+    // Get all course IDs
+    const courseIds = instructorCourses.map(course => course._id);
+
+    // Count unique users enrolled in these courses
+    const enrolledLearners = await VideoUser.distinct('user_id', {
+      course_id: { $in: courseIds }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalEnrolledLearners: enrolledLearners.length
+      }
+    });
+  } catch (error) {
+    console.error("Error getting instructor's enrolled learners:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while getting enrolled learners count"
+    });
+  }
+};
