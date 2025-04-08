@@ -19,7 +19,7 @@ const videoStorage = new CloudinaryStorage({
     allowed_formats: ['mp4', 'webm', 'ogg', 'mov'],
     transformation: [{ quality: 'auto' }],
     chunk_size: 6000000, // 6MB chunks for more stable uploads
-    timeout: 600000 // 10 minutes timeout
+    timeout: 600000 // 10 minutes timeout test
   },
 });
 
