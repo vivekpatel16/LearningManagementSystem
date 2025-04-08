@@ -407,8 +407,6 @@ exports.getEnrolledCourses = async (req, res) => {
 };
 
 
-
-
 exports.getInstructorEnrolledLearners = async (req, res) => {
   try {
     // Check if the user is an instructor
