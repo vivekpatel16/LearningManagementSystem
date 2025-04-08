@@ -406,22 +406,13 @@ exports.getEnrolledCourses = async (req, res) => {
   }
 };
 
-
 exports.getInstructorEnrolledLearners = async (req, res) => {
   try {
-    // Check if the user is an instructor
-    if (req.user.role !== 'instructor') {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied. Only instructors can view enrolled learner data."
-      });
-    }
+    const instructor_id = req.user.id;
 
-    const instructorId = req.user.id;
-
-    // Get all active courses created by this instructor
+    // First, get all active courses created by this instructor
     const instructorCourses = await Courses.find({ 
-      created_by: instructorId,
+      created_by: instructor_id,
       status: true 
     }).select('_id');
 
@@ -434,10 +425,10 @@ exports.getInstructorEnrolledLearners = async (req, res) => {
       });
     }
 
-    // Extract course IDs
+    // Get all course IDs
     const courseIds = instructorCourses.map(course => course._id);
 
-    // Get distinct users enrolled in any of those courses
+    // Count unique users enrolled in these courses
     const enrolledLearners = await VideoUser.distinct('user_id', {
       course_id: { $in: courseIds }
     });

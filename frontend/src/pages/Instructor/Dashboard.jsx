@@ -9,11 +9,13 @@ const Dashboard = () => {
   const [totalEnrolled, setTotalEnrolled] = useState(0);
   const [instructorCoursesCount, setInstructorCoursesCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true);
         // Fetch courses data
         const coursesResponse = await common_API.get("/courses"); 
         const coursesResult = coursesResponse.data;
@@ -23,12 +25,18 @@ const Dashboard = () => {
         }
 
         // Fetch enrolled learners count
-        const enrolledResponse = await common_API.get("/courses/instructor/enrolled-learners");
-        if (enrolledResponse.status === 200) {
-          setTotalEnrolled(enrolledResponse.data.data.totalEnrolledLearners || 0);
+        try {
+          const enrolledResponse = await common_API.get("courses/instructor/enrolled-learners");
+          if (enrolledResponse.status === 200) {
+            setTotalEnrolled(enrolledResponse.data.data.totalEnrolledLearners || 0);
+          }
+        } catch (enrollError) {
+          console.error("Error fetching enrolled learners:", enrollError);
+          setError("Failed to load enrolled learners count");
         }
       } catch (error) {
         console.error("Error fetching data:", error);
+        setError("Failed to load dashboard data");
       } finally {
         setLoading(false);
       }
@@ -45,6 +53,8 @@ const Dashboard = () => {
         <div className="text-center">
           <Spinner animation="border" variant="primary" />
         </div>
+      ) : error ? (
+        <div className="alert alert-danger">{error}</div>
       ) : (
         <Row>
           <Col md={6}>
