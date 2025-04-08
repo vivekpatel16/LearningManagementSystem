@@ -17,7 +17,6 @@ const videoStorage = new CloudinaryStorage({
     folder: 'lms-videos',
     resource_type: 'video',
     allowed_formats: ['mp4', 'webm', 'ogg', 'mov']
-    // ❌ Removed transformation because it causes sync processing error
   },
 });
 
