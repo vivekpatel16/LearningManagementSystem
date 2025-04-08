@@ -1,14 +1,32 @@
-import React, { useState } from "react";
-import { Container, Table, Button, Card, Form } from "react-bootstrap";
+import React, { useState, useEffect } from "react";
+import { Container, Table, Button, Card, Form, Spinner } from "react-bootstrap";
 import { FaFilePdf } from "react-icons/fa";
+import common_API from "../../Api/commonApi";
 
 const Reports = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [reports ] = useState([
-    { id: 1, name: "Alice Johnson", progress: "80%", completedCourses: 5, status: "Active" },
-    { id: 2, name: "Michael Smith", progress: "65%", completedCourses: 3, status: "Active" },
-    { id: 3, name: "Sarah Williams", progress: "90%", completedCourses: 6, status: "Inactive" },
-  ]);
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchLearnerReport = async () => {
+      try {
+        setLoading(true);
+        const response = await common_API.get("api/admin/learner-report");
+        if (response.status === 200) {
+          setReports(response.data.data || []);
+        }
+      } catch (error) {
+        console.error("Error fetching learner report:", error);
+        setError("Failed to load learner report data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLearnerReport();
+  }, []);
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
@@ -31,41 +49,49 @@ const Reports = () => {
             className="w-25"
           />
         </div>
-        <Table striped bordered hover responsive>
-          <thead className="table-dark">
-            <tr>
-              <th>Index</th>
-              <th>Name</th>
-              <th>Progress</th>
-              <th>Completed Courses</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredReports.map((report, index) => (
-              <tr key={report.id}>
-                <td>{index + 1}</td>
-                <td>{report.name}</td>
-                <td>{report.progress}</td>
-                <td>{report.completedCourses}</td>
-                <td>{report.status}</td>
-                <td>
-                  <Button variant="danger" size="sm">
-                    <FaFilePdf /> Generate PDF
-                  </Button>
-                </td>
+        {loading ? (
+          <div className="text-center p-4">
+            <Spinner animation="border" variant="primary" />
+          </div>
+        ) : error ? (
+          <div className="alert alert-danger">{error}</div>
+        ) : (
+          <Table striped bordered hover responsive>
+            <thead className="table-dark">
+              <tr>
+                <th>Index</th>
+                <th>Name</th>
+                <th>Progress</th>
+                <th>Completed Courses</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
-          ))}
-          {filteredReports.length === 0 && (
-            <tr>
-              <td colSpan="6" className="text-center">
-                No users found
-              </td>
-            </tr>
-          )}
-          </tbody>
-        </Table>
+            </thead>
+            <tbody>
+              {filteredReports.map((report) => (
+                <tr key={report.index}>
+                  <td>{report.index}</td>
+                  <td>{report.name}</td>
+                  <td>{report.progress}</td>
+                  <td>{report.completedCourses}</td>
+                  <td>{report.status}</td>
+                  <td>
+                    <Button variant="danger" size="sm">
+                      <FaFilePdf /> Generate PDF
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+              {filteredReports.length === 0 && (
+                <tr>
+                  <td colSpan="6" className="text-center">
+                    No users found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </Table>
+        )}
       </Card>
     </Container>
   );

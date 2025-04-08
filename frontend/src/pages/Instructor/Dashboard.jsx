@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card, Container, Row, Col, Modal, Table, Spinner } from "react-bootstrap";
 import { FaChalkboardTeacher, FaBook } from "react-icons/fa";
 import common_API from "../../Api/commonApi";
-
+import Courses_API from "../../Api/courseApi";
 const Dashboard = () => {
   const [showCourses, setShowCourses] = useState(false);
   const [courses, setCourses] = useState([]);
@@ -26,7 +26,7 @@ const Dashboard = () => {
 
         // Fetch enrolled learners count
         try {
-          const enrolledResponse = await common_API.get("courses/instructor/enrolled-learners");
+          const enrolledResponse = await Courses_API.get("/instructor/enrolled-learners");
           if (enrolledResponse.status === 200) {
             setTotalEnrolled(enrolledResponse.data.data.totalEnrolledLearners || 0);
           }

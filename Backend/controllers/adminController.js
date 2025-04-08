@@ -142,4 +142,54 @@ exports.updateUser = async (req,res) =>{
     console.error("Error updating User details:", error);
     res.status(500).json({ message: "Server error while updating user details." });
   }
-}
+};
+
+
+exports.getLearnerReport = async (req, res) => {
+  try {
+    const instructorId = req.user.id;
+
+    const instructorCourses = await CoursesInfo.find({ created_by: instructorId }).select('_id');
+    const courseIds = instructorCourses.map(course => course._id);
+
+    const learnerData = await VideoUserModel.find({ course_id: { $in: courseIds } });
+
+    const learnerMap = {};
+
+    for (const record of learnerData) {
+      const uid = record.user_id.toString();
+
+      if (!learnerMap[uid]) {
+        learnerMap[uid] = {
+          totalProgress: 0,
+          videoCount: 0,
+          completedCourses: new Set()
+        };
+      }
+
+      learnerMap[uid].totalProgress += record.progress_percent || 0;
+      learnerMap[uid].videoCount += 1;
+
+      if (record.completed) {
+        learnerMap[uid].completedCourses.add(record.course_id.toString());
+      }
+    }
+
+    const response = await Promise.all(Object.entries(learnerMap).map(async ([uid, data], index) => {
+      const user = await UserInfo.findById(uid).select('user_name');
+      const avgProgress = Math.round(data.totalProgress / data.videoCount);
+      return {
+        index: index + 1,
+        name: user?.user_name || "Unknown",
+        progress: `${avgProgress}%`,
+        completedCourses: data.completedCourses.size,
+        status: avgProgress >= 70 ? 'Active' : 'Inactive'
+      };
+    }));
+
+    res.status(200).json({ success: true, data: response });
+  } catch (error) {
+    console.log("server error while generating report",error);
+    res.status(500).json({ success: false, message: 'Error generating report' });
+  }
+};
