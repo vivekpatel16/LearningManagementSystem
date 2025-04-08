@@ -203,15 +203,27 @@ exports.getLearnerReport = async (req, res) => {
           record => record.course_id.toString() === courseId
         );
 
-        // Check if all videos in the course are completed
-        const allVideosCompleted = courseVideoIds.every(videoId => 
-          courseProgress.some(progress => 
-            progress.video_id.toString() === videoId && progress.completed
-          )
-        );
+        // For courses with only one video
+        if (courseVideoIds.length === 1) {
+          const singleVideoId = courseVideoIds[0];
+          const videoProgress = courseProgress.find(
+            progress => progress.video_id.toString() === singleVideoId
+          );
+          
+          if (videoProgress && videoProgress.completed) {
+            completedCourses.add(courseId);
+          }
+        } else {
+          // For courses with multiple videos
+          const allVideosCompleted = courseVideoIds.every(videoId => 
+            courseProgress.some(progress => 
+              progress.video_id.toString() === videoId && progress.completed
+            )
+          );
 
-        if (allVideosCompleted) {
-          completedCourses.add(courseId);
+          if (allVideosCompleted) {
+            completedCourses.add(courseId);
+          }
         }
       }
 
