@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Container, Table, Button, Card, Form, Spinner } from "react-bootstrap";
 import { FaFilePdf } from "react-icons/fa";
 import common_API from "../../Api/commonApi";
-
+import Admin_API from "../../Api/adminApi";
 const Reports = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [reports, setReports] = useState([]);
@@ -13,7 +13,7 @@ const Reports = () => {
     const fetchLearnerReport = async () => {
       try {
         setLoading(true);
-        const response = await common_API.get("api/admin/learner-report");
+        const response = await Admin_API.get("/learner-report");
         if (response.status === 200) {
           setReports(response.data.data || []);
         }
