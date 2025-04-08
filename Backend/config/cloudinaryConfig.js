@@ -16,8 +16,10 @@ const videoStorage = new CloudinaryStorage({
   params: {
     folder: 'lms-videos',
     resource_type: 'video',
-    allowed_formats: ['mp4', 'webm', 'ogg', 'mov']
-    // ❌ Removed transformation because it causes sync processing error
+    allowed_formats: ['mp4', 'webm', 'ogg', 'mov'],
+    transformation: [{ quality: 'auto' }],
+    chunk_size: 6000000, // 6MB chunks for more stable uploads
+    timeout: 600000 // 10 minutes timeout
   },
 });
 
