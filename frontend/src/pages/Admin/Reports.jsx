@@ -14,7 +14,7 @@ const Reports = () => {
       try {
         setLoading(true);
         const response = await Admin_API.get("/learner-report");
-        console.log("API Response:", response.data); // Debug log
+        console.log("API Response:", response.data); 
         if (response.status === 200) {
           setReports(response.data.data || []);
         }
