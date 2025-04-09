@@ -170,79 +170,76 @@ exports.getLearnerReport = async (req, res) => {
     const activeCourses = await CoursesInfo.find({ status: true }).select('_id');
     const courseIds = activeCourses.map(course => course._id);
 
-    // Get all videos for each course
-    const courseVideos = await VideoInfo.find({ course_id: { $in: courseIds } });
-    const videosByCourse = {};
-    courseVideos.forEach(video => {
-      const courseId = video.course_id.toString();
-      if (!videosByCourse[courseId]) {
-        videosByCourse[courseId] = [];
-      }
-      videosByCourse[courseId].push(video._id.toString());
-    });
+    // Prepare response data
+    const response = [];
+    let index = 1;
 
-    // Process each learner's data
-    const response = await Promise.all(learners.map(async (learner, index) => {
-      // Get all video progress records for this learner
-      const learnerProgress = await VideoUser.find({
+    // Process each learner
+    for (const learner of learners) {
+      // Get all enrollments (all video progress records indicate enrollment)
+      const enrolledVideos = await VideoUser.find({
         user_id: learner._id,
         course_id: { $in: courseIds }
       });
 
-      // Calculate metrics
-      const enrolledCourses = new Set(learnerProgress.map(record => record.course_id.toString()));
-      const completedCourses = new Set();
-      
-      // Check each enrolled course for completion
-      for (const courseId of enrolledCourses) {
-        const courseVideoIds = videosByCourse[courseId] || [];
-        if (courseVideoIds.length === 0) continue;
+      // Skip learners with no enrollments
+      if (enrolledVideos.length === 0) continue;
 
-        // Get all video progress for this course
-        const courseProgress = learnerProgress.filter(
+      // Get unique enrolled courses
+      const enrolledCourseIds = [...new Set(enrolledVideos.map(record => record.course_id.toString()))];
+
+      // Count completed courses
+      let completedCoursesCount = 0;
+
+      // Check each enrolled course
+      for (const courseId of enrolledCourseIds) {
+        // Get all videos for this course
+        const courseVideos = await VideoInfo.find({ course_id: courseId });
+        
+        // Skip courses with no videos
+        if (courseVideos.length === 0) continue;
+
+        // Get all video IDs for this course
+        const courseVideoIds = courseVideos.map(video => video._id.toString());
+
+        // Get all progress records for this learner in this course
+        const courseProgress = enrolledVideos.filter(
           record => record.course_id.toString() === courseId
         );
 
-        // For courses with only one video
-        if (courseVideoIds.length === 1) {
-          const singleVideoId = courseVideoIds[0];
-          const videoProgress = courseProgress.find(
-            progress => progress.video_id.toString() === singleVideoId
-          );
-          
-          if (videoProgress && videoProgress.completed) {
-            completedCourses.add(courseId);
-          }
-        } else {
-          // For courses with multiple videos
-          const allVideosCompleted = courseVideoIds.every(videoId => 
-            courseProgress.some(progress => 
-              progress.video_id.toString() === videoId && progress.completed
-            )
-          );
+        // Extract completed video IDs
+        const completedVideoIds = courseProgress
+          .filter(record => record.completed)
+          .map(record => record.video_id.toString());
 
-          if (allVideosCompleted) {
-            completedCourses.add(courseId);
-          }
+        // Check if all course videos are completed
+        const allVideosCompleted = courseVideoIds.every(
+          videoId => completedVideoIds.includes(videoId)
+        );
+
+        // If all videos are completed or at least one video is completed for a single-video course
+        if (allVideosCompleted || (courseVideoIds.length === 1 && completedVideoIds.length === 1)) {
+          completedCoursesCount++;
         }
       }
 
-      // Calculate average progress
-      const totalProgress = learnerProgress.reduce((sum, record) => sum + (record.progress_percent || 0), 0);
-      const avgProgress = learnerProgress.length > 0 
-        ? Math.round(totalProgress / learnerProgress.length)
+      // Calculate overall progress percentage
+      const totalProgress = enrolledVideos.reduce((sum, record) => sum + (record.progress_percent || 0), 0);
+      const avgProgress = enrolledVideos.length > 0 
+        ? Math.round(totalProgress / enrolledVideos.length) 
         : 0;
 
-      return {
-        index: index + 1,
+      // Add to response
+      response.push({
+        index: index++,
         name: learner.user_name,
         email: learner.email,
         progress: `${avgProgress}%`,
-        enrolledCourses: enrolledCourses.size,
-        completedCourses: completedCourses.size,
+        enrolledCourses: enrolledCourseIds.length,
+        completedCourses: completedCoursesCount,
         status: avgProgress >= 70 ? 'Active' : 'Inactive'
-      };
-    }));
+      });
+    }
 
     res.status(200).json({ 
       success: true, 

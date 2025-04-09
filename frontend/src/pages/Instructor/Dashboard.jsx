@@ -21,7 +21,7 @@ const Dashboard = () => {
         const coursesResult = coursesResponse.data;
         if (coursesResponse.status === 200 || coursesResponse.status === 202) {
           setCourses(coursesResult.data || []);
-          setInstructorCoursesCount(coursesResult.instructorCoursesCount || 0); 
+          setInstructorCoursesCount(coursesResult.instructorCoursesCount || 0);
         }
 
         // Fetch enrolled learners count
