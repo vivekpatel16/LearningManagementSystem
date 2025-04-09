@@ -2,8 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Container, Table, Button, Card, Form, Spinner } from "react-bootstrap";
 import { FaFilePdf } from "react-icons/fa";
 import Admin_API from "../../Api/adminApi";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
 
 const Reports = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -40,68 +38,14 @@ const Reports = () => {
     report.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const generatePDF = (learner) => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    
-    // Add title
-    doc.setFontSize(18);
-    doc.setTextColor(0, 51, 102);
-    const title = "Learner Progress Report";
-    const titleWidth = doc.getStringUnitWidth(title) * doc.internal.getFontSize() / doc.internal.scaleFactor;
-    const titleX = (pageWidth - titleWidth) / 2;
-    doc.text(title, titleX, 20);
-    
-    // Add logo (optional)
-    // doc.addImage(logoBase64, 'PNG', 10, 10, 30, 30);
-    
-    // Add learner details
-    doc.setFontSize(12);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Name: ${learner.name}`, 14, 40);
-    doc.text(`Email: ${learner.email}`, 14, 48);
-    doc.text(`Overall Progress: ${learner.progress}`, 14, 56);
-    doc.text(`Enrolled Courses: ${learner.enrolledCourses}`, 14, 64);
-    doc.text(`Completed Courses: ${learner.completedCourses}`, 14, 72);
-    doc.text(`Status: ${learner.status}`, 14, 80);
-    doc.text(`Report Generated: ${new Date().toLocaleDateString()}`, 14, 88);
-    
-    // Add horizontal line
-    doc.setLineWidth(0.5);
-    doc.line(14, 92, pageWidth - 14, 92);
-    
-    // Add report summary
-    doc.setFontSize(14);
-    doc.text("Learning Progress Summary", 14, 102);
-    
-    // Add summary table
-    doc.autoTable({
-      startY: 110,
-      head: [['Metric', 'Value']],
-      body: [
-        ['Progress', learner.progress],
-        ['Enrolled Courses', learner.enrolledCourses],
-        ['Completed Courses', learner.completedCourses],
-        ['Status', learner.status]
-      ],
-      theme: 'striped',
-      headStyles: { fillColor: [0, 51, 102], textColor: 255 },
-      styles: { halign: 'center' },
-      alternateRowStyles: { fillColor: [240, 240, 240] }
-    });
-    
-    // Add footer
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(10);
-      doc.setTextColor(100, 100, 100);
-      doc.text("Outamation Learning Management System", 14, doc.internal.pageSize.height - 10);
-      doc.text(`Page ${i} of ${pageCount}`, pageWidth - 30, doc.internal.pageSize.height - 10);
+  const generatePDF = (learnerId) => {
+    try {
+      // Open the PDF generation endpoint in a new tab, which will trigger the download
+      window.open(`${Admin_API.defaults.baseURL}/learner-report/${learnerId}/pdf`, '_blank');
+    } catch (error) {
+      console.error("Error generating report:", error);
+      alert("Failed to generate report. Please try again.");
     }
-    
-    // Save the PDF
-    doc.save(`Learner_Report_${learner.name}.pdf`);
   };
 
   return (
@@ -155,7 +99,7 @@ const Reports = () => {
                     <Button 
                       variant="danger" 
                       size="sm"
-                      onClick={() => generatePDF(report)}
+                      onClick={() => generatePDF(report._id || report.userId)}
                     >
                       <FaFilePdf /> Generate PDF
                     </Button>

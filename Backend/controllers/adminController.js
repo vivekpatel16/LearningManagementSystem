@@ -237,7 +237,8 @@ exports.getLearnerReport = async (req, res) => {
         progress: `${avgProgress}%`,
         enrolledCourses: enrolledCourseIds.length,
         completedCourses: completedCoursesCount,
-        status: avgProgress >= 70 ? 'Active' : 'Inactive'
+        status: avgProgress >= 70 ? 'Active' : 'Inactive',
+        userId: learner._id
       });
     }
 
@@ -250,6 +251,215 @@ exports.getLearnerReport = async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Error generating report',
+      error: error.message 
+    });
+  }
+};
+
+exports.generateLearnerPDF = async (req, res) => {
+  try {
+    const { learnerId } = req.params;
+    
+    // Validate learner ID
+    if (!mongoose.Types.ObjectId.isValid(learnerId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid learner ID" 
+      });
+    }
+    
+    // Get learner details
+    const learner = await UserInfo.findById(learnerId);
+    if (!learner || learner.role !== 'user') {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Learner not found" 
+      });
+    }
+    
+    // Get all active courses
+    const activeCourses = await CoursesInfo.find({ status: true }).select('_id');
+    const courseIds = activeCourses.map(course => course._id);
+    
+    // Get all enrollments
+    const enrolledVideos = await VideoUser.find({
+      user_id: learnerId,
+      course_id: { $in: courseIds }
+    });
+    
+    // Get unique enrolled courses
+    const enrolledCourseIds = [...new Set(enrolledVideos.map(record => record.course_id.toString()))];
+    
+    // Count completed courses
+    let completedCoursesCount = 0;
+    
+    // Check each enrolled course
+    for (const courseId of enrolledCourseIds) {
+      // Get all videos for this course
+      const courseVideos = await VideoInfo.find({ course_id: courseId });
+      
+      // Skip courses with no videos
+      if (courseVideos.length === 0) continue;
+      
+      // Get all video IDs for this course
+      const courseVideoIds = courseVideos.map(video => video._id.toString());
+      
+      // Get all progress records for this learner in this course
+      const courseProgress = enrolledVideos.filter(
+        record => record.course_id.toString() === courseId
+      );
+      
+      // Extract completed video IDs
+      const completedVideoIds = courseProgress
+        .filter(record => record.completed)
+        .map(record => record.video_id.toString());
+      
+      // Check if all course videos are completed
+      const allVideosCompleted = courseVideoIds.every(
+        videoId => completedVideoIds.includes(videoId)
+      );
+      
+      // If all videos are completed or at least one video is completed for a single-video course
+      if (allVideosCompleted || (courseVideoIds.length === 1 && completedVideoIds.length === 1)) {
+        completedCoursesCount++;
+      }
+    }
+    
+    // Calculate overall progress percentage
+    const totalProgress = enrolledVideos.reduce((sum, record) => sum + (record.progress_percent || 0), 0);
+    const avgProgress = enrolledVideos.length > 0 
+      ? Math.round(totalProgress / enrolledVideos.length) 
+      : 0;
+    
+    // Create learner report data
+    const learnerReport = {
+      name: learner.user_name,
+      email: learner.email,
+      progress: `${avgProgress}%`,
+      enrolledCourses: enrolledCourseIds.length,
+      completedCourses: completedCoursesCount,
+      status: avgProgress >= 70 ? 'Active' : 'Inactive',
+      generatedDate: new Date().toLocaleDateString()
+    };
+    
+    // Set response headers for PDF
+    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Content-Disposition', `attachment; filename=Learner_Report_${learner.user_name.replace(/[^a-zA-Z0-9]/g, '_')}.html`);
+    
+    // Send HTML content
+    res.send(`
+      <html>
+      <head>
+        <title>Learner Report - ${learnerReport.name}</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            color: #333;
+          }
+          .header {
+            text-align: center;
+            color: #003366;
+            margin-bottom: 30px;
+          }
+          .learner-info {
+            margin-bottom: 30px;
+          }
+          .info-row {
+            margin-bottom: 10px;
+          }
+          .separator {
+            height: 1px;
+            background-color: #ccc;
+            margin: 20px 0;
+          }
+          .summary-title {
+            font-size: 18px;
+            color: #003366;
+            margin-bottom: 15px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+          }
+          th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+          }
+          th {
+            background-color: #003366;
+            color: white;
+          }
+          tr:nth-child(even) {
+            background-color: #f2f2f2;
+          }
+          .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            margin-top: 40px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Learner Progress Report</h1>
+        </div>
+        
+        <div class="learner-info">
+          <div class="info-row"><strong>Name:</strong> ${learnerReport.name}</div>
+          <div class="info-row"><strong>Email:</strong> ${learnerReport.email}</div>
+          <div class="info-row"><strong>Overall Progress:</strong> ${learnerReport.progress}</div>
+          <div class="info-row"><strong>Enrolled Courses:</strong> ${learnerReport.enrolledCourses}</div>
+          <div class="info-row"><strong>Completed Courses:</strong> ${learnerReport.completedCourses}</div>
+          <div class="info-row"><strong>Status:</strong> ${learnerReport.status}</div>
+          <div class="info-row"><strong>Report Generated:</strong> ${learnerReport.generatedDate}</div>
+        </div>
+        
+        <div class="separator"></div>
+        
+        <div class="summary-title">Learning Progress Summary</div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Progress</td>
+              <td>${learnerReport.progress}</td>
+            </tr>
+            <tr>
+              <td>Enrolled Courses</td>
+              <td>${learnerReport.enrolledCourses}</td>
+            </tr>
+            <tr>
+              <td>Completed Courses</td>
+              <td>${learnerReport.completedCourses}</td>
+            </tr>
+            <tr>
+              <td>Status</td>
+              <td>${learnerReport.status}</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <div class="footer">
+          <p>Outamation Learning Management System</p>
+        </div>
+      </body>
+      </html>
+    `);
+  } catch (error) {
+    console.error("Server error while generating learner PDF:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error generating learner PDF',
       error: error.message 
     });
   }
