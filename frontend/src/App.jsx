@@ -18,7 +18,7 @@ import Wishlist from "./pages/Learner/Wishlist";
 import Courses from "./pages/Learner/Courses";
 import CourseShow from "./pages/Learner/CourseShow";
 import Category from "./pages/Admin/Category";
-
+import TidioChat from "./Components/TidioChat";
 
 import VideoPlayer from "./Components/VideoPlayer";
 import Header from "./Components/Header";
@@ -227,6 +227,7 @@ function App() {
     <>
       <Header />
       {user && <Sidebar />}
+      <TidioChat />
       <Routes>
         {/* Authentication Routes */}
         <Route path="/" element={<Login />} />
