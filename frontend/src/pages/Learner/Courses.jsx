@@ -7,7 +7,8 @@ import common_API from "../../Api/commonApi";
 import Courses_API from "../../Api/courseApi";
 import Wishlist_API from "../../Api/wishlistApi";
 
-const defaultImage = "https://www.futuretechinfovision.co.uk/wp-content/uploads/2022/06/IT-Courses.jpg";
+// Default image if thumbnail is missing
+const defaultImage = "https://img.freepik.com/free-vector/hand-drawn-flat-design-stack-books_23-2149334862.jpg";
 
 // Filter options
 const durations = [
@@ -23,11 +24,35 @@ const renderStars = (rating) => (
     {[...Array(5)].map((_, i) => (
       <FaStar 
         key={i} 
-        color={i < rating ? "#ffc107" : "#e4e5e9"} 
-        style={{ marginRight: '2px' }}
+        color={i < rating ? "#ffdd00" : "#e4e5e9"} 
+        style={{ marginRight: '2px', filter: i < rating ? "drop-shadow(0 0 2px rgba(255, 221, 0, 0.3))" : "none" }}
       />
     ))}
   </span>
+);
+
+// Course Card Skeleton Component
+const CourseCardSkeleton = () => (
+  <Card className="border-0 shadow-sm h-100 skeleton-card" style={{ borderRadius: "12px", overflow: "hidden" }}>
+    <div className="skeleton-pulse" style={{ height: '180px' }}></div>
+    <Card.Body className="p-4">
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <div className="skeleton-pulse mb-2" style={{ height: "20px", width: "70%", borderRadius: "4px" }}></div>
+        <div className="skeleton-pulse" style={{ height: "20px", width: "20px", borderRadius: "50%" }}></div>
+      </div>
+      <div className="skeleton-pulse mb-3" style={{ height: "16px", width: "40%", borderRadius: "4px" }}></div>
+      <div className="skeleton-pulse mb-3" style={{ height: "16px", width: "90%", borderRadius: "4px" }}></div>
+      <div className="skeleton-pulse mb-2" style={{ height: "16px", width: "85%", borderRadius: "4px" }}></div>
+      <div className="d-flex align-items-center mb-2">
+        <div className="skeleton-pulse me-2" style={{ height: "24px", width: "80px", borderRadius: "6px" }}></div>
+        <div className="skeleton-pulse" style={{ height: "24px", width: "80px", borderRadius: "6px" }}></div>
+      </div>
+      <div className="skeleton-pulse mt-2 mb-2" style={{ height: "16px", width: "60%", borderRadius: "4px" }}></div>
+      <div className="mt-auto pt-3">
+        <div className="skeleton-pulse" style={{ height: "38px", width: "100%", borderRadius: "8px" }}></div>
+      </div>
+    </Card.Body>
+  </Card>
 );
 
 const Courses = () => {
@@ -44,6 +69,215 @@ const Courses = () => {
   const [error, setError] = useState(null);
 
   const navigate = useNavigate();
+
+  // Add custom CSS styles for animations and skeleton loader
+  useEffect(() => {
+    const styleEl = document.createElement('style');
+    styleEl.innerHTML = `
+      /* Animation keyframes */
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      
+      @keyframes shimmer {
+        0% { background-position: -1000px 0; }
+        100% { background-position: 1000px 0; }
+      }
+      
+      /* Page animations */
+      .courses-container {
+        animation: fadeIn 0.5s ease forwards;
+      }
+      
+      .course-card {
+        animation: fadeIn 0.5s ease forwards;
+        animation-delay: calc(0.05s * var(--animation-order, 0));
+        opacity: 0;
+        transform: translateY(10px);
+        transition: all 0.3s ease;
+        border-radius: 8px;
+        overflow: hidden;
+        height: 100%;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        cursor: pointer;
+      }
+      
+      .course-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+      }
+      
+      /* Responsive adjustments for course cards */
+      @media (max-width: 768px) {
+        .card-title {
+          font-size: 1rem !important;
+        }
+        
+        .course-card:hover {
+          transform: translateY(-3px);
+        }
+      }
+      
+      /* Skeleton loading styles */
+      .skeleton-pulse {
+        background: linear-gradient(90deg, #f0f8ff 25%, #e6f2ff 50%, #f0f8ff 75%);
+        background-size: 200% 100%;
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+      
+      @keyframes pulse {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
+      }
+      
+      .skeleton-card {
+        opacity: 0.9;
+        box-shadow: 0 4px 12px rgba(0, 98, 230, 0.05);
+      }
+      
+      /* Button and rating spacing */
+      .view-course-btn {
+        margin-top: 20px;
+      }
+      
+      .rating-container {
+        margin-bottom: 15px;
+        padding: 8px 0;
+        border-top: 1px solid #f0f0f0;
+      }
+      
+      /* Filter animation */
+      .filter-sidebar {
+        animation: slideIn 0.3s ease forwards;
+      }
+      
+      @keyframes slideIn {
+        from { transform: translateX(50px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      
+      /* Header animation */
+      .page-title {
+        position: relative;
+        display: inline-block;
+        padding-bottom: 8px;
+        color: "#0062E6"; 
+      }
+      
+      .page-title::after {
+        content: '';
+        position: absolute;
+        width: 50%;
+        height: 3px;
+        bottom: 0;
+        left: 25%;
+        background: linear-gradient(135deg, #0062E6 0%, #33A1FD 100%);
+        transform: scaleX(0);
+        transform-origin: center;
+        animation: expandWidth 1s ease forwards;
+        border-radius: 3px;
+      }
+      
+      @keyframes expandWidth {
+        to { transform: scaleX(1); }
+      }
+
+      /* Search bar focus effect */
+      .search-bar:focus-within {
+        border-color: #0062E6 !important;
+        box-shadow: 0 0 0 3px rgba(0, 98, 230, 0.25) !important;
+      }
+      
+      /* Add a subtle gradient effect to focused search bar */
+      .search-bar:focus-within::after {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        border-radius: 55px;
+        background: linear-gradient(135deg, #0062E6 0%, #33A1FD 100%);
+        z-index: -1;
+        opacity: 0.5;
+      }
+
+      /* Course description hover effect */
+      .course-description {
+        position: relative;
+        cursor: pointer;
+      }
+      
+      .course-description:hover .full-description {
+        display: block !important;
+      }
+      
+      /* Position the tooltip based on position in viewport */
+      .course-card:nth-child(3n) .full-description {
+        right: 0;
+        left: auto;
+      }
+      
+      .full-description {
+        position: absolute;
+        top: 0;
+        left: 0;
+        background-color: white;
+        border: 1px solid rgba(0, 98, 230, 0.1);
+        z-index: 1000;
+      }
+      
+      /* Fix spacing in course cards */
+      .course-card .card-body {
+        padding: 0.75rem !important;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+      
+      .description-wrapper {
+        height: 52px !important;
+        margin-bottom: 0.5rem !important;
+        margin-top: 0.25rem !important;
+      }
+      
+      .course-card h5.fw-bold {
+        margin-bottom: 0 !important;
+      }
+      
+      .course-card .d-flex.align-items-center {
+        margin-bottom: 0.25rem !important;
+      }
+
+      /* Add custom scrollbar styling */
+      .full-description::-webkit-scrollbar {
+        width: 0;
+        display: none;
+      }
+      
+      .full-description::-webkit-scrollbar-track {
+        display: none;
+      }
+      
+      .full-description::-webkit-scrollbar-thumb {
+        display: none;
+      }
+      
+      .full-description::-webkit-scrollbar-thumb:hover {
+        display: none;
+      }
+    `;
+    document.head.appendChild(styleEl);
+    
+    return () => {
+      document.head.removeChild(styleEl);
+    };
+  }, []);
 
   // Fetch courses, categories and chapter data from API
   useEffect(() => {
@@ -252,14 +486,24 @@ const Courses = () => {
     // Check if description is likely to exceed one line (roughly 50 characters)
     const isLongDescription = description.length > 50;
     
+    // For tooltip, limit to 200 characters if very long
+    const tooltipText = description.length > 300 
+      ? description.substring(0, 300) + "..." 
+      : description;
+    
     return (
       <div className="course-description" style={{ position: "relative" }}>
         <p 
           style={{ 
-            whiteSpace: "nowrap", 
             overflow: "hidden", 
             textOverflow: "ellipsis",
-            margin: 0
+            margin: 0,
+            display: "-webkit-box",
+            WebkitLineClamp: "3",
+            WebkitBoxOrient: "vertical",
+            lineHeight: "1.4",
+            maxHeight: "4.2em",
+            fontSize: "0.9rem"
           }}
         >
           {description}
@@ -272,17 +516,23 @@ const Courses = () => {
               top: "-10px", 
               left: "0", 
               backgroundColor: "white", 
-              padding: "10px", 
-              borderRadius: "5px", 
-              boxShadow: "0 3px 10px rgba(0,0,0,0.2)", 
-              zIndex: 100, 
+              padding: "15px", 
+              borderRadius: "8px", 
+              boxShadow: "0 4px 15px rgba(0,0,0,0.15)", 
+              zIndex: 1000, 
               display: "none",
-              width: "100%",
-              minWidth: "200px",
-              maxWidth: "300px"
+              width: "280px",
+              maxWidth: "350px",
+              overflowY: "visible",
+              wordWrap: "break-word",
+              whiteSpace: "normal",
+              lineHeight: "1.5",
+              fontSize: "0.9rem",
+              color: "#333",
+              border: "1px solid rgba(0, 98, 230, 0.1)"
             }}
           >
-            {description}
+            {tooltipText}
           </div>
         )}
       </div>
@@ -370,293 +620,513 @@ const Courses = () => {
   };
 
   return (
-    <Container className="mt-4">
-      <h2 className="text-center fw-bold mb-4" style={{ color: "#000000" }}>All Courses</h2>
-
-      <Row className="mb-4 align-items-center">
-        <Col md={showFilters ? 6 : 10}>
-          <InputGroup
-            style={{
-              width: "100%",
-              height: "50px",
-              borderRadius: "50px",
-              overflow: "hidden",
-              border: "2px solid #ccc",  // Default border color
-              transition: "0.3s ease-in-out",
-            }}
-            className="search-bar"
+    <div>
+      {/* Header Banner */}
+      <div className="py-4 mt-3" style={{ 
+        background: "linear-gradient(135deg, #0062E6 0%, #33A1FD 100%)",
+        marginBottom: "2rem",
+        borderRadius: "0 0 25px 25px"
+      }}>
+        <Container>
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="d-flex justify-content-between align-items-center"
           >
-            <InputGroup.Text style={{ background: "white", border: "none" }}>
-              <FaSearch />
-            </InputGroup.Text>
-            <Form.Control
-              type="text"
-              placeholder="Search for a course..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                height: "50px",
-                borderRadius: "50px",
-                border: "none",
-                outline: "none",
-                boxShadow: "none",  // Removes unwanted Bootstrap outline
-              }}
-            />
-          </InputGroup>
-        </Col>
+            <div className="text-white">
+              <h2 className="fw-bold mb-1">Explore Courses</h2>
+              <p className="mb-0 opacity-75">Discover the perfect course to enhance your skills</p>
+            </div>
+            
+            <div className="d-flex align-items-center">
+              {/* Header Search Bar */}
+              <div className="me-3 d-none d-md-block">
+                <InputGroup 
+                  className="hero-search"
+                  style={{
+                    width: "260px",
+                    height: "45px",
+                    borderRadius: "50px",
+                    overflow: "hidden",
+                    backgroundColor: "white",
+                    boxShadow: "0 3px 10px rgba(0,0,0,0.1)",
+                    marginTop: "20px"
+                  }}
+                >
+                  <InputGroup.Text style={{ background: "white", border: "none", paddingLeft: "15px" }}>
+                    <FaSearch color="#0062E6" />
+                  </InputGroup.Text>
+                  <Form.Control
+                    type="text"
+                    placeholder="Search courses..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      height: "45px",
+                      border: "none",
+                      outline: "none",
+                      boxShadow: "none",
+                      fontSize: "0.95rem",
+                      paddingRight: "15px"
+                    }}
+                  />
+                </InputGroup>
+              </div>
+              
+              <Button 
+                variant="light" 
+                onClick={() => setShowFilters(true)}
+                className="d-none d-md-block"
+                style={{
+                  background: "rgba(255, 255, 255, 0.9)",
+                  color: "#0056b3",
+                  fontWeight: "500",
+                  borderRadius: "8px",
+                  border: "none",
+                  boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+                  padding: "8px 16px",
+                  transition: "all 0.2s ease"
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = "rgba(255, 255, 255, 1)";
+                  e.target.style.transform = "translateY(-2px)";
+                  e.target.style.boxShadow = "0 4px 8px rgba(0,0,0,0.15)";
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = "rgba(255, 255, 255, 0.9)";
+                  e.target.style.transform = "translateY(0)";
+                  e.target.style.boxShadow = "0 2px 5px rgba(0,0,0,0.1)";
+                }}
+              >
+                <FaFilter className="me-2" /> Filters
+                {(selectedCategories.length > 0 || selectedDurations.length > 0 || selectedRatings.length > 0) && (
+                  <span className="ms-1 badge bg-primary">
+                    {selectedCategories.length + selectedDurations.length + selectedRatings.length}
+                  </span>
+                )}
+              </Button>
+            </div>
+          </motion.div>
+        </Container>
+      </div>
 
-        {!showFilters && (
-          <Col md={2} className="d-flex justify-content-end">
+      <Container className="pb-5">
+        {/* Mobile Search & Filters (only visible on small screens) */}
+        <div className="mb-4 d-md-none" style={{ display: "flex", alignItems: "center" }}>
+          <div style={{ width: "75%", paddingRight: "8px" }}>
+            <InputGroup
+              className="hero-search"
+              style={{
+                width: "100%",
+                height: "45px",
+                borderRadius: "50px",
+                overflow: "hidden",
+                backgroundColor: "white",
+                boxShadow: "0 3px 10px rgba(0,0,0,0.1)",
+                marginTop: "15px"
+              }}
+            >
+              <InputGroup.Text style={{ background: "white", border: "none", paddingLeft: "15px", marginBottom: "15px" }}>
+                <FaSearch color="#0062E6" />
+              </InputGroup.Text>
+              <Form.Control
+                type="text"
+                placeholder="Search courses..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  height: "45px",
+                  border: "none",
+                  outline: "none",
+                  boxShadow: "none",
+                  fontSize: "0.95rem"
+                }}
+              />
+            </InputGroup>
+          </div>
+          <div style={{ width: "25%" }}>
             <Button
-              variant="success"
+              variant="primary"
               className="w-100"
               onClick={() => setShowFilters(true)}
               style={{
-                borderColor: '#198754',
-                color: '#198754',
-                backgroundColor: 'white',
-                transition: 'all 0.3s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.borderColor = '#198754'; // Keep primary border color
-                e.target.style.color = 'white'; // Change text color to white
-                e.target.style.backgroundColor = '#198754'; // Change background to primary color
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.borderColor = '#198754'; // Keep primary border color
-                e.target.style.color = '#198754'; // Change text color back to primary
-                e.target.style.backgroundColor = 'white'; // Change background back to white
+                background: "linear-gradient(135deg, #0062E6 0%, #33A1FD 100%)",
+                border: "none",
+                borderRadius: "8px",
+                height: "45px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
               }}
             >
-              <FaFilter /> Filters
+              <FaFilter />
               {(selectedCategories.length > 0 || selectedDurations.length > 0 || selectedRatings.length > 0) && (
-                <span className="ms-1 badge bg-danger">
+                <span className="ms-1 badge bg-light text-primary">
                   {selectedCategories.length + selectedDurations.length + selectedRatings.length}
                 </span>
               )}
             </Button>
-          </Col>
-        )}
-      </Row>
-      
-      {/* Show how many courses match the current filters */}
-      {!isLoading && (
-        <Row className="mb-3">
-          <Col>
-            <p className="text-muted">
-              Showing {filteredCourses.length} of {courses.length} courses
-              {(selectedCategories.length > 0 || selectedDurations.length > 0 || selectedRatings.length > 0 || searchQuery) && " (filtered)"}
-            </p>
-          </Col>
-        </Row>
-      )}
+          </div>
+        </div>
 
-      <Row>
-        <motion.div initial={{ width: "100%" }} animate={{ width: showFilters ? "75%" : "100%" }} transition={{ duration: 0.3 }}>
-          <Row>
-            {isLoading ? (
-              <Col className="text-center">
-                <Spinner animation="border" variant="primary" />
-                <p className="mt-2">Loading courses...</p>
-              </Col>
-            ) : error ? (
-              <Col className="text-center">
-                <div className="alert alert-danger">{error}</div>
-              </Col>
-            ) : filteredCourses.length > 0 ? (
-              filteredCourses.map((course) => (
-                <Col key={course._id} md={4} className="mb-4">
-                  <Card className="shadow-sm h-100">
-                    <Card.Img
-                      variant="top"
-                      src={getValidThumbnail(course.thumbnail)}
-                      alt={course.title}
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = defaultImage;
-                      }}
-                      style={{ height: "200px", objectFit: "cover" }}
-                    />
-                    <Card.Body className="d-flex flex-column">
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <h5 className="mb-0">{course.title}</h5>
-                        {wishlistedCourses[course._id] ? (
-                          <FaHeart
-                            className="text-danger"
-                            style={{ cursor: "pointer" }}
-                            onClick={(e) => toggleWishlist(course._id, e)}
-                          />
-                        ) : (
-                          <FaRegHeart
-                            style={{ cursor: "pointer" }}
-                            onClick={(e) => toggleWishlist(course._id, e)}
-                          />
-                        )}
-                      </div>
-                      <div 
-                        className="description-wrapper" 
-                        style={{ marginBottom: "10px" }}
-                        onMouseEnter={(e) => {
-                          const fullDesc = e.currentTarget.querySelector('.full-description');
-                          if (fullDesc) fullDesc.style.display = "block";
-                        }}
-                        onMouseLeave={(e) => {
-                          const fullDesc = e.currentTarget.querySelector('.full-description');
-                          if (fullDesc) fullDesc.style.display = "none";
-                        }}
-                      >
-                        {truncateDescription(course.description)}
-                      </div>
-                      <p><strong>Category:</strong> {getCategoryName(course.category_id)}</p>
-                      <p><strong>Duration:</strong> {formatCourseDuration(course._id)}</p>
-                      <p><strong>Instructor:</strong> {course.created_by?.user_name || "Unknown"}</p>
-                      <p className="mb-0">
-                        <strong>Rating:</strong> {' '}
-                        <strong style={{ color: "#0056b3", fontSize: "1.1rem" }}>
-                          {course.averageRating ? Number(course.averageRating).toFixed(1) : "0.0"}
-                        </strong> {' '}
-                        {renderStars(course.averageRating || 0)} {' '}
-                        <span className="text-muted">({course.totalRatings || 0})</span>
-                      </p>
-                      <Button
-                        variant="outline-primary"
-                        size="sm"
-                        className="w-100 mt-auto"
-                        onClick={() => navigate(`/courses/courseshow/${course._id}`)}
-                        style={{
-                          borderColor: "#0056b3", // Dark blue border
-                          color: "#ffffff", // White text
-                          backgroundColor: "#0056b3", // Dark blue background
-                          transition: "all 0.3s ease", // Smooth transition effect
-                        }}
-                        onMouseEnter={(e) => {
-                          e.target.style.borderColor = "#003f7f"; // Darker blue border on hover
-                          e.target.style.color = "#ffffff"; // Keep text white
-                          e.target.style.backgroundColor = "#003f7f"; // Darker blue background
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.borderColor = "#0056b3"; // Restore original border color
-                          e.target.style.color = "#ffffff"; // Restore text color
-                          e.target.style.backgroundColor = "#0056b3"; // Restore background color
-                        }}
-                      >
-                        <FaChalkboardTeacher /> View Course
-                      </Button>
-                    </Card.Body>
-                  </Card>
+        <Row>
+          <motion.div initial={{ width: "100%" }} animate={{ width: showFilters ? "75%" : "100%" }} transition={{ duration: 0.3 }}>
+            <Row className="courses-container">
+              {isLoading ? (
+                // Skeleton loading state
+                Array.from({ length: 6 }).map((_, index) => (
+                  <Col key={index} md={4} className="mb-4">
+                    <CourseCardSkeleton />
+                  </Col>
+                ))
+              ) : error ? (
+                <Col className="text-center">
+                  <div className="alert alert-danger">{error}</div>
                 </Col>
-              ))
-            ) : (
-              <Col className="text-center">
-                <div className="alert alert-warning">No courses match your filters. Try adjusting your criteria.</div>
-              </Col>
-            )}
-          </Row>
-        </motion.div>
-
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div initial={{ x: 200, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 200, opacity: 0 }} transition={{ duration: 0.3 }}
-              style={{
-                position: "absolute",
-                right: "15px",
-                top: "100px",
-                background: "#fff",
-                padding: "15px",
-                borderRadius: "8px",
-                boxShadow: "0 0 10px rgba(0,0,0,0.1)",
-                zIndex: 10,
-                width: "250px"
-              }}
-            >
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <h5>Filters</h5>
-                <Button variant="link" className="p-0 text-secondary-emphasis" onClick={() => setShowFilters(false)}>
-                  <FaTimes size={20} />
-                </Button>
-              </div>
-              <Accordion alwaysOpen>
-                <Accordion.Item eventKey="0">
-                  <Accordion.Header>Category</Accordion.Header>
-                  <Accordion.Body>
-                    {categories.length > 0 ? (
-                      categories.map((cat) => (
-                        <Form.Check 
-                          key={cat._id} 
-                          type="checkbox" 
-                          label={cat.category_name} 
-                          checked={selectedCategories.includes(cat._id)}
-                          onChange={() => toggleSelection(cat._id, setSelectedCategories, selectedCategories)}
+              ) : filteredCourses.length > 0 ? (
+                filteredCourses.map((course, index) => (
+                  <Col key={course._id} md={4} className="mb-4">
+                    <Card 
+                      className="border-0 shadow-sm h-100 course-card" 
+                      style={{ 
+                        "--animation-order": index, 
+                        borderRadius: "12px",
+                        overflow: "hidden"
+                      }}
+                      onClick={() => navigate(`/courses/courseshow/${course._id}`)}
+                    >
+                      <div className="position-relative">
+                        <Card.Img
+                          variant="top"
+                          src={getValidThumbnail(course.thumbnail)}
+                          alt={course.title}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = defaultImage;
+                          }}
+                          style={{ height: "180px", objectFit: "cover", objectPosition: "center" }}
                         />
-                      ))
-                    ) : (
-                      <p className="text-muted">Loading categories...</p>
-                    )}
-                  </Accordion.Body>
-                </Accordion.Item>
-                <Accordion.Item eventKey="1">
-                  <Accordion.Header>Course Duration</Accordion.Header>
-                  <Accordion.Body>
-                    {durations.map((dur) => (
-                      <Form.Check 
-                        key={dur.label} 
-                        type="checkbox" 
-                        label={dur.label}
-                        checked={selectedDurations.some(d => d.label === dur.label)}
-                        onChange={() => {
-                          console.log("Toggling duration:", dur);
-                          toggleSelection(dur, setSelectedDurations, selectedDurations);
-                        }}
-                      />
-                    ))}
-                  </Accordion.Body>
-                </Accordion.Item>
-                <Accordion.Item eventKey="2">
-                  <Accordion.Header>Ratings</Accordion.Header>
-                  <Accordion.Body>
-                    {ratings.map((rate) => (
-                      <Form.Check key={rate} type="checkbox" label={renderStars(rate)} value={rate}
-                        checked={selectedRatings.includes(rate)}
-                        onChange={() => toggleSelection(rate, setSelectedRatings, selectedRatings)}
-                      />
-                    ))}
-                  </Accordion.Body>
-                </Accordion.Item>
-              </Accordion>
-              <Button
-                variant="secondary"
-                className="mt-3 w-100"
-                onClick={() => {
-                  console.log("Selected durations before reset:", selectedDurations);
-                  setSelectedCategories([]);
-                  setSelectedDurations([]);
-                  setSelectedRatings([]);
-                  console.log("Duration filters reset");
-                }}
+                      </div>
+                      <Card.Body className="d-flex flex-column">
+                        <div className="d-flex justify-content-between align-items-start mb-0">
+                          <h5 className="fw-bold mb-0" style={{ 
+                            fontSize: "1.1rem",
+                            height: "38px",
+                            overflow: "hidden",
+                            display: "-webkit-box",
+                            WebkitLineClamp: "2",
+                            WebkitBoxOrient: "vertical"
+                          }}>{course.title}</h5>
+                          <button
+                            onClick={(e) => toggleWishlist(course._id, e)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              padding: 0,
+                              cursor: "pointer",
+                              fontSize: "1.25rem",
+                              marginLeft: "10px",
+                              minWidth: "20px",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: wishlistedCourses[course._id] ? "#dc3545" : "#6c757d"
+                            }}
+                            title={wishlistedCourses[course._id] ? "Remove from wishlist" : "Add to wishlist"}
+                          >
+                            {wishlistedCourses[course._id] ? <FaHeart /> : <FaRegHeart />}
+                          </button>
+                        </div>
+                        
+                        <div className="d-flex align-items-center mt-0" style={{ height: "18px" }}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#6c757d" className="bi bi-person me-2" viewBox="0 0 16 16">
+                            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664z"/>
+                          </svg>
+                          <span className="text-muted" style={{ fontSize: "0.9rem" }}>
+                            {course.created_by?.user_name || "Unknown Instructor"}
+                          </span>
+                        </div>
+                        
+                        <div className="description-wrapper" style={{ height: "52px", marginBottom: "0.5rem", marginTop: "0.25rem" }}>
+                          {truncateDescription(course.description || "No description available for this course.")}
+                        </div>
+                        
+                        <div className="mb-1" style={{ height: "30px" }}>
+                          <div className="d-flex align-items-center">
+                            <span className="badge me-2" style={{ 
+                              background: "rgba(0, 98, 230, 0.1)", 
+                              color: "#0062E6", 
+                              fontWeight: "500",
+                              padding: "5px 8px",
+                              borderRadius: "6px"
+                            }}>
+                              {getCategoryName(course.category_id)}
+                            </span>
+                            <span className="badge" style={{ 
+                              background: "rgba(253, 126, 20, 0.1)", 
+                              color: "#fd7e14", 
+                              fontWeight: "500",
+                              padding: "5px 8px",
+                              borderRadius: "6px"
+                            }}>
+                              {formatCourseDuration(course._id)}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="rating-container mb-2" style={{ 
+                          borderTop: "1px solid #f0f0f0", 
+                          paddingTop: "6px",
+                          height: "34px"
+                        }}>
+                          <div className="d-flex align-items-center">
+                            <strong className="me-2">Rating:</strong>
+                            <strong style={{ color: "#0062E6", fontSize: "1.1rem" }}>
+                              {course.averageRating ? Number(course.averageRating).toFixed(1) : "0.0"}
+                            </strong>
+                            <div className="ms-2">
+                              {renderStars(course.averageRating || 0)}
+                            </div>
+                            <span className="text-muted ms-2" style={{ fontSize: "0.85rem" }}>
+                              ({course.totalRatings || 0})
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <Button
+                          variant="primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/courses/courseshow/${course._id}`);
+                          }}
+                          className="w-100 mt-auto"
+                          style={{
+                            background: "linear-gradient(135deg, #0062E6 0%, #33A1FD 100%)",
+                            border: "none",
+                            borderRadius: "8px",
+                            padding: "8px 0",
+                            fontWeight: "500",
+                            transition: "all 0.2s ease"
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.background = "linear-gradient(135deg, #0056CD 0%, #2B8AD9 100%)";
+                            e.target.style.transform = "translateY(-2px)";
+                            e.target.style.boxShadow = "0 4px 8px rgba(0, 98, 230, 0.3)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.background = "linear-gradient(135deg, #0062E6 0%, #33A1FD 100%)";
+                            e.target.style.transform = "translateY(0)";
+                            e.target.style.boxShadow = "none";
+                          }}
+                        >
+                          <FaChalkboardTeacher className="me-2" /> View Course
+                        </Button>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                ))
+              ) : (
+                <Col className="text-center">
+                  <div style={{ 
+                    maxWidth: "450px", 
+                    margin: "0 auto", 
+                    padding: "2rem",
+                    background: "rgba(0, 98, 230, 0.05)",
+                    borderRadius: "12px"
+                  }}>
+                    <img 
+                      src="https://img.freepik.com/free-vector/empty-concept-illustration_114360-1188.jpg" 
+                      alt="No results" 
+                      className="img-fluid mb-4" 
+                      style={{ maxHeight: "180px" }} 
+                    />
+                    <h4 className="mb-3 fw-bold">No courses match your filters</h4>
+                    <p className="text-muted mb-4">Try adjusting your search criteria or remove some filters.</p>
+                    <Button 
+                      variant="primary" 
+                      onClick={() => {
+                        setSelectedCategories([]);
+                        setSelectedDurations([]);
+                        setSelectedRatings([]);
+                        setSearchQuery("");
+                      }}
+                      style={{
+                        background: "linear-gradient(135deg, #0062E6 0%, #33A1FD 100%)",
+                        border: "none",
+                        borderRadius: "8px",
+                        padding: "10px 20px",
+                        fontWeight: "500",
+                        transition: "all 0.2s ease"
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = "linear-gradient(135deg, #0056CD 0%, #2B8AD9 100%)";
+                        e.target.style.transform = "translateY(-2px)";
+                        e.target.style.boxShadow = "0 4px 8px rgba(0, 98, 230, 0.3)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = "linear-gradient(135deg, #0062E6 0%, #33A1FD 100%)";
+                        e.target.style.transform = "translateY(0)";
+                        e.target.style.boxShadow = "none";
+                      }}
+                    >
+                      <FaSyncAlt className="me-2" /> Reset All Filters
+                    </Button>
+                  </div>
+                </Col>
+              )}
+            </Row>
+          </motion.div>
+
+          <AnimatePresence mode="wait">
+            {showFilters && (
+              <motion.div 
+                initial={{ x: 200, opacity: 0 }} 
+                animate={{ x: 0, opacity: 1 }} 
+                exit={{ x: 200, opacity: 0 }} 
+                transition={{ duration: 0.2, ease: "easeInOut" }}
                 style={{
-                  borderColor: "#6c757d", // Secondary border color (gray)
-                  color: "#6c757d", // Secondary text color (gray)
-                  backgroundColor: "white", // White background
-                  transition: "all 0.3s ease", // Smooth transition effect
+                  position: "absolute",
+                  right: "15px",
+                  top: "220px", // Position below the header
+                  background: "#fff",
+                  padding: "20px",
+                  borderRadius: "12px",
+                  boxShadow: "0 5px 15px rgba(0,0,0,0.1)",
+                  zIndex: 10,
+                  width: "280px",
+                  border: "1px solid rgba(0, 98, 230, 0.1)",
+                  willChange: "transform, opacity" // Add willChange to improve performance
                 }}
-                onMouseEnter={(e) => {
-                  e.target.style.borderColor = "#6c757d"; // Keep border color on hover
-                  e.target.style.color = "white"; // Change text color to white
-                  e.target.style.backgroundColor = "#6c757d"; // Change background to secondary color
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.borderColor = "#6c757d"; // Keep border color on mouse leave
-                  e.target.style.color = "#6c757d"; // Change text color back to secondary color
-                  e.target.style.backgroundColor = "white"; // Change background back to white
-                }}
+                className="filter-sidebar"
               >
-                <FaSyncAlt /> Reset Filters
-              </Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </Row>
-    </Container>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h5 className="fw-bold mb-0" style={{ color: "#0062E6" }}>Filter Courses</h5>
+                  <Button 
+                    variant="link" 
+                    className="p-0" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowFilters(false);
+                    }}
+                    style={{ 
+                      color: "#0062E6",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: "30px",
+                      height: "30px",
+                      background: "rgba(0, 98, 230, 0.05)",
+                      borderRadius: "50%"
+                    }}
+                  >
+                    <FaTimes size={16} />
+                  </Button>
+                </div>
+                
+                <Accordion defaultActiveKey={["0", "1", "2"]} alwaysOpen>
+                  <Accordion.Item eventKey="0" className="mb-3" style={{ border: "1px solid rgba(0, 98, 230, 0.1)", borderRadius: "10px" }}>
+                    <Accordion.Header className="filter-header">
+                      <span style={{ color: "#0062E6", fontWeight: "500" }}>Category</span>
+                    </Accordion.Header>
+                    <Accordion.Body>
+                      {categories.length > 0 ? (
+                        categories.map((cat) => (
+                          <Form.Check 
+                            key={cat._id} 
+                            type="checkbox" 
+                            id={`category-${cat._id}`}
+                            label={cat.category_name} 
+                            checked={selectedCategories.includes(cat._id)}
+                            onChange={() => toggleSelection(cat._id, setSelectedCategories, selectedCategories)}
+                            className="mb-2 custom-checkbox"
+                          />
+                        ))
+                      ) : (
+                        <div className="d-flex justify-content-center my-2">
+                          <Spinner animation="border" variant="primary" size="sm" />
+                        </div>
+                      )}
+                    </Accordion.Body>
+                  </Accordion.Item>
+                  
+                  <Accordion.Item eventKey="1" className="mb-3" style={{ border: "1px solid rgba(0, 98, 230, 0.1)", borderRadius: "10px" }}>
+                    <Accordion.Header className="filter-header">
+                      <span style={{ color: "#0062E6", fontWeight: "500" }}>Duration</span>
+                    </Accordion.Header>
+                    <Accordion.Body>
+                      {durations.map((dur) => (
+                        <Form.Check 
+                          key={dur.label} 
+                          type="checkbox" 
+                          id={`duration-${dur.label}`}
+                          label={dur.label}
+                          checked={selectedDurations.some(d => d.label === dur.label)}
+                          onChange={() => toggleSelection(dur, setSelectedDurations, selectedDurations)}
+                          className="mb-2 custom-checkbox"
+                        />
+                      ))}
+                    </Accordion.Body>
+                  </Accordion.Item>
+                  
+                  <Accordion.Item eventKey="2" className="mb-3" style={{ border: "1px solid rgba(0, 98, 230, 0.1)", borderRadius: "10px" }}>
+                    <Accordion.Header className="filter-header">
+                      <span style={{ color: "#0062E6", fontWeight: "500" }}>Rating</span>
+                    </Accordion.Header>
+                    <Accordion.Body>
+                      {ratings.map((rate) => (
+                        <Form.Check 
+                          key={rate} 
+                          type="checkbox" 
+                          id={`rating-${rate}`}
+                          label={renderStars(rate)} 
+                          value={rate}
+                          checked={selectedRatings.includes(rate)}
+                          onChange={() => toggleSelection(rate, setSelectedRatings, selectedRatings)}
+                          className="mb-2 custom-checkbox"
+                        />
+                      ))}
+                    </Accordion.Body>
+                  </Accordion.Item>
+                </Accordion>
+                
+                <Button
+                  variant="primary"
+                  className="mt-3 w-100"
+                  onClick={() => {
+                    setSelectedCategories([]);
+                    setSelectedDurations([]);
+                    setSelectedRatings([]);
+                  }}
+                  style={{
+                    background: "linear-gradient(135deg, #0062E6 0%, #33A1FD 100%)",
+                    border: "none",
+                    color: "white",
+                    borderRadius: "8px",
+                    padding: "10px 0",
+                    fontWeight: "500",
+                    transition: "all 0.2s ease"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = "linear-gradient(135deg, #0056CD 0%, #2B8AD9 100%)";
+                    e.target.style.transform = "translateY(-2px)";
+                    e.target.style.boxShadow = "0 4px 8px rgba(0, 98, 230, 0.3)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = "linear-gradient(135deg, #0062E6 0%, #33A1FD 100%)";
+                    e.target.style.transform = "translateY(0)";
+                    e.target.style.boxShadow = "none";
+                  }}
+                >
+                  <FaSyncAlt className="me-2" /> Reset Filters
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Row>
+      </Container>
+    </div>
   );
 };
 

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import common_API from "../../Api/commonApi";
+import { validateToken } from "../../utils/tokenValidator";
 
 export const loginUser = createAsyncThunk("users/loginUser", async (credentials, { rejectWithValue }) => {
   try {
@@ -7,25 +8,20 @@ export const loginUser = createAsyncThunk("users/loginUser", async (credentials,
       headers: { "Content-Type": "application/json" },
     });
     
-    // Check if token is valid (contains necessary role info)
+    // Check if token is valid
     const token = response.data.token;
-    if (!token) {
-      return rejectWithValue({ message: "Invalid token received" });
+    const tokenValidation = validateToken(token);
+    
+    if (!tokenValidation.isValid) {
+      return rejectWithValue({ message: tokenValidation.error || "Invalid token received" });
     }
     
-    // Verify JWT contents
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      // Ensure role in token matches role in user object
-      if (payload.role !== response.data.user.role) {
-        return rejectWithValue({ message: "Authentication data mismatch" });
-      }
-    } catch (err) {
-      return rejectWithValue({ message: "Invalid token format" });
-    }
-    
+    // Store tokens and user data
     localStorage.setItem("user", JSON.stringify(response.data.user));
-    localStorage.setItem("token", response.data.token);
+    localStorage.setItem("token", token);
+    if (response.data.refreshToken) {
+      localStorage.setItem("refreshToken", response.data.refreshToken);
+    }
     return response.data;
   } catch (error) {
     return rejectWithValue(error.response?.data || { message: "Login failed" });
@@ -47,6 +43,7 @@ export const verifyAuth = createAsyncThunk("users/verifyAuth", async (_, { rejec
       // Skip detailed token validation if no token - let rejection handle it
       if (!token) {
         localStorage.removeItem("user");
+        localStorage.removeItem("refreshToken");
         return rejectWithValue("No token available");
       }
       
@@ -54,12 +51,14 @@ export const verifyAuth = createAsyncThunk("users/verifyAuth", async (_, { rejec
     } else {
       localStorage.removeItem("user");
       localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
       return rejectWithValue(response.data.message || "Authentication failed");
     }
   } catch (error) {
     // Handle token expiration, network errors, etc.
     localStorage.removeItem("user");
     localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
     return rejectWithValue(error.response?.data?.message || "Authentication verification failed");
   }
 });
@@ -82,6 +81,7 @@ const authSlice = createSlice({
       state.loading = false;
       localStorage.removeItem("user");
       localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
     },
     updateUser: (state, action) => {
       state.user = action.payload;
@@ -124,6 +124,7 @@ const authSlice = createSlice({
         // Clear localStorage on failed verification
         localStorage.removeItem("user");
         localStorage.removeItem("token");
+        localStorage.removeItem("refreshToken");
       });
   },
 });
