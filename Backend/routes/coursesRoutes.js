@@ -1,13 +1,16 @@
 const express = require("express");
 const {addCategories,allCategories,updateCategory, deleteCategory } = require("../controllers/categoryController");
-const {addCourses,deleteCourse,updateCourse, enrollCourse, checkEnrollment, getEnrolledCourses, getInstructorEnrolledLearners}=require("../controllers/coursesController");
+const {addCourses, fetchCourses, deleteCourse,updateCourse, enrollCourse, checkEnrollment, getEnrolledCourses, getInstructorEnrolledLearners}=require("../controllers/coursesController");
 const {authenticateUser} =require("../middleware/authUserMiddleware");
-const {uploadVideo, getVideosByChapter, editVideoDetails, deleteVideo, updateVideoOrder, getVideoProgress, updateVideoProgress}=require("../controllers/videoController");
+const {uploadVideo, getVideosByChapter, editVideoDetails, deleteVideo, getVideoProgress, updateVideoProgress}=require("../controllers/videoController");
 const { uploadVideo: cloudinaryUploadVideo, handleMulterError: cloudinaryMulterError } = require("../config/cloudinaryConfig");
 const {addChapter,fetchChapter,editChapter, deleteChapter, updateChapterOrder}=require("../controllers/chapterController");
 const {addRating,getRating,updateRating}=require("../controllers/ratingController");
 const {addComment, getComment, deleteComment, editComment} = require("../controllers/commentController");
 const router = express.Router();
+
+// Get all courses
+router.get("/", authenticateUser, fetchCourses);
 
 router.post("/",authenticateUser,addCourses);
 router.patch("/:course_id",authenticateUser,updateCourse);
@@ -27,7 +30,7 @@ router.patch("/chapter/:chapter_id",authenticateUser,editChapter);
 router.delete("/chapter/:chapter_id",authenticateUser,deleteChapter);
 
 
-router.patch("/video/order",authenticateUser,updateVideoOrder);
+
 router.post(
   "/video",
   authenticateUser,
@@ -78,5 +81,7 @@ router.get("/enrollment/:course_id", authenticateUser, checkEnrollment);
 router.get("/enrolled", authenticateUser, getEnrolledCourses);
 
 router.get("/instructor/enrolled-learners", authenticateUser, getInstructorEnrolledLearners);
+
+
 
 module.exports = router;

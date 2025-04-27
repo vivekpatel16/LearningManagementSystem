@@ -13,14 +13,6 @@ const videoSchema = new mongoose.Schema(
     video_description: {
       type: String,
     },
-    chapter_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-      ref: "Chapter",
-    },
-    order: {
-      type: Number,
-    },
     video_length: {
       type: Number,
     },

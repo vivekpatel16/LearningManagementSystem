@@ -1,9 +1,14 @@
-const videoUser=require("../models/videoUserModel");
+const VideoInfo = require("../models/videoModel");
+const VideoUser = require("../models/videoUserModel");
 const ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const ffprobePath = require('@ffprobe-installer/ffprobe').path;
 const { cloudinary, uploadBase64Image } = require('../config/cloudinaryConfig');
-const video = require('../models/videoModel');
+const ChapterContent = require("../models/chapterContentModel");
+const Chapter = require("../models/chapterModel");
+const Course = require("../models/coursesInfoModel");
+const User = require("../models/userInfoModel");
+const { upload } = require("../middleware/uploadMiddleware");
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 ffmpeg.setFfprobePath(ffprobePath);
@@ -29,9 +34,11 @@ exports.uploadVideo = async (req, res) => {
       return res.status(400).json({ message: "No video uploaded" });
     }
 
-    const { video_title, video_description, chapter_id, video_thumbnail } = req.body;
-    const lastVideo = await video.findOne({ chapter_id }).sort({ order: -1 });  
-    const newOrder = lastVideo ? lastVideo.order + 1 : 1;
+    const { video_title, video_description, video_thumbnail, chapter_id } = req.body;
+
+    if (!video_title || !chapter_id) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
 
     // Cloudinary already processed the video and gives us the URL
     const videoUrl = req.file.path;
@@ -87,17 +94,26 @@ exports.uploadVideo = async (req, res) => {
     }
     
     // Create new video with Cloudinary URL
-    const newVideo = new video({
+    const newVideo = new VideoInfo({
       video_url: videoUrl, 
       video_title: video_title,
       video_description: video_description,
-      chapter_id: chapter_id,
-      order: newOrder,
       video_length: videoLength,
       video_thumbnail: thumbnailUrl || ''
     });
 
     await newVideo.save();
+
+    // Create entry in ChapterContent table
+    const newChapterContent = new ChapterContent({
+      chapter_id,
+      content_id: newVideo._id,
+      content_type_ref: "VideoInfo",
+      order: 0 // You might want to calculate this based on existing content
+    });
+
+    await newChapterContent.save();
+
     res.status(201).json({ message: "Video uploaded successfully", video: newVideo });
   } catch (error) {
     console.error("Error uploading video:", error);
@@ -108,9 +124,24 @@ exports.uploadVideo = async (req, res) => {
 exports.getVideosByChapter = async (req, res) => {
   const { chapter_id } = req.params;
   try {
-    const videos=await video.find({chapter_id}).sort({order:1});
+    // Get all video content for this chapter
+    const chapterContents = await ChapterContent.find({ 
+      chapter_id,
+      content_type_ref: "VideoInfo"
+    }).sort({ order: 1 });
 
-   return res.status(200).json(videos);
+    // Extract video IDs
+    const videoIds = chapterContents.map(content => content.content_id);
+
+    // Get the actual video documents
+    const videos = await VideoInfo.find({ _id: { $in: videoIds } });
+
+    // Sort videos according to the order in chapterContents
+    const sortedVideos = videoIds.map(id => 
+      videos.find(video => video._id.toString() === id.toString())
+    ).filter(video => video); // Remove any undefined entries
+
+    return res.status(200).json(sortedVideos);
   } catch (error) {
     console.error("Error fetching videos:", error);
     res.status(500).json({ message: "Server error while fetching videos" });
@@ -121,7 +152,7 @@ exports.deleteVideo = async (req, res) => {
   try {
     const { video_id } = req.params;
     
-    const foundVideo = await video.findById(video_id);
+    const foundVideo = await VideoInfo.findById(video_id);
     if (!foundVideo) {
       return res.status(404).json({ message: "Video not found" });
     }
@@ -143,7 +174,13 @@ exports.deleteVideo = async (req, res) => {
     }
     
     // Delete the video document from the database
-    await video.findByIdAndDelete(video_id);
+    await VideoInfo.findByIdAndDelete(video_id);
+    
+    // Delete any chapter content references to this video
+    await ChapterContent.deleteMany({ 
+      content_id: video_id,
+      content_type_ref: "VideoInfo"
+    });
     
     res.status(200).json({ message: "Video deleted successfully" });
   } catch (error) {
@@ -155,9 +192,9 @@ exports.deleteVideo = async (req, res) => {
 exports.editVideoDetails = async (req, res) => {
   try {
     const { video_id } = req.params;
-    const { video_title, video_description, order, video_thumbnail } = req.body;
+    const { video_title, video_description, video_thumbnail } = req.body;
 
-    const foundVideo = await video.findById(video_id);
+    const foundVideo = await VideoInfo.findById(video_id);
     if (!foundVideo) {
       return res.status(404).json({ message: "Video not found" });
     }
@@ -165,7 +202,6 @@ exports.editVideoDetails = async (req, res) => {
     const updateFields = {
       video_title: video_title || foundVideo.video_title,
       video_description: video_description || foundVideo.video_description,
-      order: order || foundVideo.order,
     };
 
     // Handle thumbnail update
@@ -264,7 +300,7 @@ exports.editVideoDetails = async (req, res) => {
       }
     }
     
-    const updatedVideo = await video.findByIdAndUpdate(
+    const updatedVideo = await VideoInfo.findByIdAndUpdate(
       video_id,
       { $set: updateFields },
       { new: true }
@@ -280,39 +316,6 @@ exports.editVideoDetails = async (req, res) => {
   }
 };
 
-exports.updateVideoOrder=async(req,res)=>
-{
-  const {videos}=req.body;
-    try
-    {
-        if(!videos || !Array.isArray(videos))
-        {
-            return res.status(400).json({message:"invalid video data"});
-        }
-        
-        const updateOrder=videos.map((videoItem,index)=>
-        {
-          const updateData={order:index+1};
-          if(videoItem.chapter_id)
-          {
-            updateData.chapter_id=videoItem.chapter_id;
-          }
-          return video.findByIdAndUpdate(
-            videoItem.id,
-            {$set:updateData},
-            {new:true}
-          );
-        });
-       await Promise.all(updateOrder);
-       return res.status(200).json({message:"video order updated successfully"});
-    }
-    catch(error)
-    {
-        console.log("server error while updating video order",error);
-        res.status(500).json({message:"server error while updating vidoe order"});
-    }
-};
-
 exports.getVideoProgress = async (req, res) => {
   const { user_id, course_id, video_id } = req.params;
   try {
@@ -326,7 +329,7 @@ exports.getVideoProgress = async (req, res) => {
     }
 
     // Find the progress record
-    const progress = await videoUser.findOne({
+    const progress = await VideoUser.findOne({
       user_id: user_id,
       course_id: course_id,
       video_id: video_id
@@ -349,7 +352,7 @@ exports.getVideoProgress = async (req, res) => {
       if (progressPercent === 0 && progress.current_time > 0) {
         try {
           // Get the video details to calculate progress percentage
-          const videoDetails = await video.findById(video_id);
+          const videoDetails = await VideoInfo.findById(video_id);
           
           if (videoDetails) {
             // Ensure we have a valid video_length, fallback to a default if missing
@@ -362,7 +365,7 @@ exports.getVideoProgress = async (req, res) => {
                 
                 // Save the updated video_length to the video record if we got a valid duration
                 if (videoLength > 0) {
-                  await video.findByIdAndUpdate(
+                  await VideoInfo.findByIdAndUpdate(
                     video_id,
                     { $set: { video_length: videoLength } },
                     { new: true }
@@ -382,7 +385,7 @@ exports.getVideoProgress = async (req, res) => {
               );
               
               // Update the progress record with the calculated percentage for future use
-              await videoUser.findByIdAndUpdate(
+              await VideoUser.findByIdAndUpdate(
                 progress._id,
                 { progress_percent: progressPercent },
                 { new: true }
@@ -464,7 +467,7 @@ exports.updateVideoProgress = async (req, res) => {
     const isCompleted = completed || safeProgressPercent >= 95;
     
     // Update or create the progress record
-    const progress = await videoUser.findOneAndUpdate(
+    const progress = await VideoUser.findOneAndUpdate(
       { 
         user_id: user_id,
         course_id: course_id,
@@ -511,14 +514,14 @@ const updateCourseProgress = async (user_id, course_id) => {
     const chapterIds = chapters.map(chapter => chapter._id);
     
     // Get all videos from these chapters
-    const allVideos = await video.find({ chapter_id: { $in: chapterIds } });
+    const allVideos = await VideoInfo.find({ chapter_id: { $in: chapterIds } });
     
     if (allVideos.length === 0) {
       return 0; // No videos, no progress to calculate
     }
     
     // Find all video progress records for this user and course
-    const videoProgresses = await videoUser.find({
+    const videoProgresses = await VideoUser.find({
       user_id,
       course_id
     });

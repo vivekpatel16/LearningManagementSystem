@@ -65,12 +65,12 @@ exports.fetchCourses = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-    const allUser=await User.find({});
-    const totalUser=allUser.filter((u)=>u.role==="user").length;
-    const totalInstructor=allUser.filter((u)=>u.role==="instructor").length;
+    const allUser = await User.find({});
+    const totalUser = allUser.filter((u) => u.role === "user").length;
+    const totalInstructor = allUser.filter((u) => u.role === "instructor").length;
     const activeLearnerIds = await VideoUser.distinct('user_id', { course_id: { $exists: true } });
     const activeLearnersCount = activeLearnerIds.length;
-    const allCourses=await Courses.countDocuments({status:true});
+    const allCourses = await Courses.countDocuments({ status: true });
     
     let courses;
     let instructorCoursesCount = 0;
@@ -78,6 +78,39 @@ exports.fetchCourses = async (req, res) => {
     // Admin sees all courses including deactivated ones
     if (req.user.role === "admin") {
       courses = await Courses.find().populate("created_by", "user_name");
+      
+      // Get additional data for admin dashboard
+      const categories = await Category.find();
+      const coursesByCategory = {};
+      
+      // Initialize all categories with zero count
+      categories.forEach(cat => {
+        coursesByCategory[cat.category_name] = 0;
+      });
+      
+      // Count courses by category
+      for (const course of await Courses.find().populate("category_id")) {
+        if (course.category_id && course.category_id.category_name) {
+          const categoryName = course.category_id.category_name;
+          coursesByCategory[categoryName] = (coursesByCategory[categoryName] || 0) + 1;
+        }
+      }
+      
+      // Calculate course completion statistics
+      const enrolledCount = await VideoUser.countDocuments();
+      const completedCount = await VideoUser.countDocuments({ completed: true });
+      
+      return res.status(202).json({
+        data: courses || [],
+        totalUser,
+        totalInstructor,
+        activeLearnersCount,
+        allCourses,
+        instructorCoursesCount,
+        coursesByCategory,
+        enrolledCount,
+        completedCount
+      });
     } 
     // Instructors only see their active courses
     else if (req.user.role === "instructor") {
@@ -98,7 +131,7 @@ exports.fetchCourses = async (req, res) => {
       instructorCoursesCount
     });
   } catch (error) {
-    console.log("Error fetching courses:", error);
+    console.error("Error fetching courses:", error);
     res.status(500).json({ message: "Server error while fetching courses." });
   }
 };
@@ -444,6 +477,85 @@ exports.getInstructorEnrolledLearners = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while getting enrolled learners count"
+    });
+  }
+};
+
+// Get learning activity data for bar chart
+exports.getLearningActivityData = async (req, res) => {
+  try {
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      return date.toISOString().slice(0, 7); // Format: YYYY-MM
+    }).reverse();
+
+    const activityData = await Promise.all(last6Months.map(async (month) => {
+      const enrollments = await VideoUser.countDocuments({
+        createdAt: {
+          $gte: new Date(`${month}-01`),
+          $lt: new Date(`${month}-31`)
+        }
+      });
+
+      const completions = await VideoUser.countDocuments({
+        completedVideos: { $exists: true, $ne: [] },
+        updatedAt: {
+          $gte: new Date(`${month}-01`),
+          $lt: new Date(`${month}-31`)
+        }
+      });
+
+      return {
+        month: new Date(`${month}-01`).toLocaleString('default', { month: 'short' }),
+        enrollments,
+        completions
+      };
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: activityData
+    });
+  } catch (error) {
+    console.error("Error fetching learning activity data:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching learning activity data",
+      error: error.message
+    });
+  }
+};
+
+// Get category enrollment data for pie chart
+exports.getCategoryEnrollmentData = async (req, res) => {
+  try {
+    const categories = await Category.distinct('category_name');
+    
+    const categoryData = await Promise.all(categories.map(async (category) => {
+      const courses = await Courses.find({ category_name: category });
+      const courseIds = courses.map(course => course._id);
+      
+      const enrollments = await VideoUser.countDocuments({
+        course_id: { $in: courseIds }
+      });
+
+      return {
+        category,
+        enrollments
+      };
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: categoryData
+    });
+  } catch (error) {
+    console.error("Error fetching category enrollment data:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching category enrollment data",
+      error: error.message
     });
   }
 };
