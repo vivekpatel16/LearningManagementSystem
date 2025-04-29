@@ -5,7 +5,7 @@ import axios from "axios";
 
 // Use the base URL from axiosInstance to stay consistent
 const Quiz_API = axios.create({ 
-  baseURL: "http://localhost:5000/api/assessment",
+  baseURL: "https://learningmanagementsystem-2-bj3z.onrender.com/api/assessment",
   timeout: 30000, // Increase timeout to 30 seconds
 });
 
