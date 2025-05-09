@@ -129,47 +129,62 @@ const CourseShow = () => {
                                 const chaptersResponse = await Courses_API.get(`/chapter/${courseId}`);
                                 
                                 if (chaptersResponse.data && Array.isArray(chaptersResponse.data)) {
-                                    // For each chapter, fetch its videos
-                                    const chaptersWithVideos = await Promise.all(
+                                    // When processing chapters, add static documents and quizzes
+                                    const chaptersWithContent = await Promise.all(
                                         chaptersResponse.data.map(async (chapter) => {
                                             try {
                                                 const videosResponse = await Courses_API.get(`/video/${chapter._id}`);
-                                                return {
-                                                    id: chapter._id,
-                                                    title: chapter.chapter_title,
-                                                    description: chapter.chapter_description,
-                                                    order: chapter.order,
-                                                    items: videosResponse.data ? videosResponse.data.map(video => ({
+                                                
+                                                // Create items array with videos and static content
+                                                const items = [
+                                                    // Add videos if they exist
+                                                    ...(videosResponse.data ? videosResponse.data.map(video => ({
                                                         id: video._id,
-                                                        title: video.video_title,
                                                         type: "video",
+                                                        title: video.video_title,
                                                         description: video.video_description,
                                                         url: video.video_url,
                                                         thumbnail: video.video_thumbnail,
                                                         duration: video.video_length ? Math.floor(video.video_length / 60) : "Unknown"
-                                                    })) : [],
-                                                    videos: videosResponse.data || [],
-                                                    texts: chapter.texts || []
-                                                };
-                                            } catch (err) {
-                                                console.error(`Error fetching videos for chapter ${chapter._id}:`, err);
+                                                    })) : []),
+                                                    // Add static document
+                                                    {
+                                                        id: `doc-${chapter._id}`,
+                                                        type: "document",
+                                                        title: `${chapter.chapter_title} Notes`,
+                                                        description: "Study material for this chapter"
+                                                    },
+                                                    // Add static quiz
+                                                    {
+                                                        id: `quiz-${chapter._id}`,
+                                                        type: "quiz",
+                                                        title: `${chapter.chapter_title} Quiz`,
+                                                        description: "Test your knowledge",
+                                                        timeLimit: 15,
+                                                        passingScore: 70,
+                                                        attempts: 3
+                                                    }
+                                                ];
+
                                                 return {
                                                     id: chapter._id,
                                                     title: chapter.chapter_title,
                                                     description: chapter.chapter_description,
                                                     order: chapter.order,
-                                                    items: [],
-                                                    videos: [],
-                                                    texts: []
+                                                    items: items
                                                 };
+                                            } catch (err) {
+                                                console.error(`Error processing chapter ${chapter._id}:`, err);
+                                                return chapter;
                                             }
                                         })
                                     );
-                                    console.log("Fetched chapters with videos:", chaptersWithVideos);
-                                    setChapters(chaptersWithVideos);
+                                    
+                                    console.log("Chapters with content:", chaptersWithContent);
+                                    setChapters(chaptersWithContent);
                                     
                                     // Save to localStorage for next time
-                                    localStorage.setItem(contentStorageKey, JSON.stringify(chaptersWithVideos));
+                                    localStorage.setItem(contentStorageKey, JSON.stringify(chaptersWithContent));
                                 }
                             } catch (chapterError) {
                                 console.error("Error fetching chapters:", chapterError);
@@ -255,6 +270,39 @@ const CourseShow = () => {
             checkEnrollmentStatus();
         }
     }, [course?._id]);
+
+    // Add this after the existing useEffect for fetching data
+    useEffect(() => {
+        if (chapters.length > 0) {
+            const chaptersWithStaticData = chapters.map((chapter, index) => {
+                // Add simple static document and quiz items
+                const staticItems = [
+                    {
+                        id: `doc-${chapter._id}`,
+                        type: 'document',
+                        title: `${chapter.title} - Study Material`,
+                        description: 'Click to view study material for this chapter'
+                    },
+                    {
+                        id: `quiz-${chapter._id}`,
+                        type: 'quiz',
+                        title: `${chapter.title} - Chapter Quiz`,
+                        description: 'Test your knowledge of this chapter'
+                    }
+                ];
+
+                return {
+                    ...chapter,
+                    items: [
+                        ...(chapter.items || []),
+                        ...staticItems
+                    ]
+                };
+            });
+
+            setChapters(chaptersWithStaticData);
+        }
+    }, [chapters.length > 0]);
 
     // Format total duration into hours and minutes
     const formatTotalDuration = () => {
@@ -512,20 +560,14 @@ const CourseShow = () => {
         }
     };
 
-    const handleQuizClick = (quiz) => {
-        navigate('/quiz-attempt', { 
-            state: { 
-                quizData: quiz, 
-                courseData: course, 
-                chapterData: chapters.find(chapter => 
-                    chapter.quizzes && chapter.quizzes.some(q => q.id === quiz.id)
-                ) 
-            } 
-        });
-    };
-
-    // Handle item click (video, document, quiz)
+    // Update the handleItemClick function
     const handleItemClick = (item, chapterId) => {
+        if (!isEnrolled) {
+            setSelectedVideo({ video: item, chapterIndex: 0 });
+            setShowEnrollModal(true);
+            return;
+        }
+
         if (item.type === "video") {
             navigate(`/learner/video/${item.id}`, {
                 state: {
@@ -538,39 +580,63 @@ const CourseShow = () => {
                 }
             });
         } else if (item.type === "document") {
+            // Navigate to document viewer with the correct path
             navigate(`/learner/document/${item.id}`, {
                 state: {
-                    documentUrl: item.url,
                     title: item.title,
-                    content: item.content,
+                    description: item.description,
                     courseId: courseId,
                     chapterId: chapterId,
                     itemId: item.id
                 }
             });
         } else if (item.type === "quiz") {
-            // Check if quiz has already been attempted maximum times
-            const quizAttempts = learnerData.quizAttempts || [];
-            const attemptsMade = quizAttempts.filter(a => a.quizId === item.id).length;
-            
-            if (attemptsMade >= item.attempts) {
-                alert(`You have already used all ${item.attempts} attempts for this quiz.`);
-                return;
-            }
-            
-            // Navigate to quiz attempt page
             navigate(`/learner/quiz/${item.id}`, {
                 state: {
-                    quizId: item.id,
                     title: item.title,
                     description: item.description,
-                    questions: item.questions,
-                    timeLimit: item.timeLimit,
-                    passingScore: item.passingScore,
-                    attempts: item.attempts,
-                    attemptsMade: attemptsMade,
+                    timeLimit: 15,
+                    passingScore: 70,
+                    questions: [
+                        {
+                            id: 1,
+                            question: "What is the main purpose of this chapter?",
+                            options: [
+                                "To introduce basic concepts",
+                                "To provide advanced knowledge",
+                                "To test previous learning",
+                                "To summarize the course"
+                            ],
+                            correctAnswer: 0
+                        },
+                        {
+                            id: 2,
+                            question: "Which of the following is most important for learning this topic?",
+                            options: [
+                                "Regular practice",
+                                "Memorization",
+                                "Speed learning",
+                                "Group study"
+                            ],
+                            correctAnswer: 0
+                        },
+                        {
+                            id: 3,
+                            question: "What is the recommended approach to master this chapter?",
+                            options: [
+                                "Study theory only",
+                                "Practice exercises regularly",
+                                "Skip difficult parts",
+                                "Learn without breaks"
+                            ],
+                            correctAnswer: 1
+                        }
+                    ],
                     courseId: courseId,
-                    chapterId: chapterId
+                    chapterId: chapterId,
+                    itemId: item.id,
+                    attempts: 3,
+                    attemptsMade: learnerData.quizAttempts?.filter(a => a.quizId === item.id).length || 0
                 }
             });
         }
@@ -618,12 +684,11 @@ const CourseShow = () => {
                     <div className="d-flex justify-content-between align-items-center">
                         <div>
                             <p className="mb-0 fw-medium">{item.title}</p>
-                            {item.type === "video" && (
-                                <small className="text-muted">{item.duration || "Unknown"} minutes</small>
-                            )}
-                            {item.type === "quiz" && (
-                                <small className="text-muted">{item.questions?.length || 0} questions • {item.timeLimit} min • Pass: {item.passingScore}%</small>
-                            )}
+                            <small className="text-muted">
+                                {item.type === "video" && `${item.duration || "Unknown"} minutes`}
+                                {item.type === "document" && item.description}
+                                {item.type === "quiz" && item.description}
+                            </small>
                         </div>
                         
                         <div className="d-flex align-items-center">

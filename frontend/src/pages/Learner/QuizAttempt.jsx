@@ -1,34 +1,84 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import {
-  Container,
-  Row,
-  Col,
-  Card,
-  Form,
-  Button,
-  Alert,
-  ProgressBar,
-  Badge,
-  Modal
-} from "react-bootstrap";
-import {
-  FaArrowLeft,
-  FaClock,
-  FaCheck,
-  FaTimes,
-  FaSpinner,
-  FaInfoCircle
-} from "react-icons/fa";
+import { Container, Row, Col, Card, Form, Button, Alert, ProgressBar, Badge, Modal } from "react-bootstrap";
+import { FaArrowLeft, FaClock, FaCheck, FaTimes, FaSpinner, FaInfoCircle } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import axiosInstance from '../../Api/axiosInstance';
+
+// Static quiz data for testing
+const staticQuizData = {
+  id: 1,
+  title: "Introduction to React Quiz",
+  description: "Test your knowledge of React fundamentals",
+  timeLimit: 10, // 10 minutes
+  passingScore: 70,
+  attempts: 3,
+  questions: [
+    {
+      id: 1,
+      text: "What is React?",
+      allowMultipleAnswers: false,
+      options: [
+        { text: "A JavaScript library for building user interfaces", isCorrect: true },
+        { text: "A programming language", isCorrect: false },
+        { text: "A database management system", isCorrect: false },
+        { text: "A web server", isCorrect: false }
+      ]
+    },
+    {
+      id: 2,
+      text: "Which of the following are React hooks?",
+      allowMultipleAnswers: true,
+      options: [
+        { text: "useState", isCorrect: true },
+        { text: "useEffect", isCorrect: true },
+        { text: "useContext", isCorrect: true },
+        { text: "useDatabase", isCorrect: false }
+      ]
+    },
+    {
+      id: 3,
+      text: "What is JSX?",
+      allowMultipleAnswers: false,
+      options: [
+        { text: "A database query language", isCorrect: false },
+        { text: "A styling framework", isCorrect: false },
+        { text: "A syntax extension for JavaScript that lets you write HTML-like code", isCorrect: true },
+        { text: "A testing framework", isCorrect: false }
+      ]
+    },
+    {
+      id: 4,
+      text: "Which of these are valid ways to handle events in React?",
+      allowMultipleAnswers: true,
+      options: [
+        { text: "onClick", isCorrect: true },
+        { text: "onChange", isCorrect: true },
+        { text: "onSubmit", isCorrect: true },
+        { text: "onDatabase", isCorrect: false }
+      ]
+    },
+    {
+      id: 5,
+      text: "What is the purpose of the useEffect hook?",
+      allowMultipleAnswers: false,
+      options: [
+        { text: "To handle form submissions", isCorrect: false },
+        { text: "To perform side effects in function components", isCorrect: true },
+        { text: "To create new components", isCorrect: false },
+        { text: "To style components", isCorrect: false }
+      ]
+    }
+  ]
+};
 
 const QuizAttempt = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { quizData, courseData, chapterData } = location.state || {};
+  const { quizData = staticQuizData, courseData, chapterData } = location.state || {};
   
   // Quiz state
+  const [showDashboard, setShowDashboard] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -36,10 +86,11 @@ const QuizAttempt = () => {
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [quizResult, setQuizResult] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [attemptsRemaining, setAttemptsRemaining] = useState(quizData.attempts || 3);
+  const [previousAttempts, setPreviousAttempts] = useState([]);
   
   // Initialize quiz
   useEffect(() => {
-    // Validate if we have quiz data
     if (!quizData || !quizData.questions || quizData.questions.length === 0) {
       toast.error("Invalid quiz data");
       navigate(-1);
@@ -55,7 +106,19 @@ const QuizAttempt = () => {
     
     // Initialize timer
     if (quizData.timeLimit && quizData.timeLimit > 0) {
-      setTimeRemaining(quizData.timeLimit * 60); // Convert minutes to seconds
+      setTimeRemaining(quizData.timeLimit * 60);
+    }
+
+    // Load previous attempts from localStorage
+    const storedAttempts = localStorage.getItem(`quiz_attempts_${quizData.id}`);
+    if (storedAttempts) {
+      const attempts = JSON.parse(storedAttempts);
+      setPreviousAttempts(attempts);
+      
+      // Calculate remaining attempts
+      const usedAttempts = attempts.length;
+      const remaining = Math.max(0, quizData.attempts - usedAttempts);
+      setAttemptsRemaining(remaining);
     }
   }, [quizData, navigate]);
   
@@ -173,12 +236,10 @@ const QuizAttempt = () => {
         const userAnswer = selectedAnswers[questionIndex];
         
         if (question.allowMultipleAnswers) {
-          // For multiple-answer questions
           if (!Array.isArray(userAnswer) || userAnswer.length === 0) {
-            return; // Skip if not answered
+            return;
           }
           
-          // Check if user selected all correct options and only correct options
           const correctOptions = question.options
             .map((option, index) => option.isCorrect ? index : null)
             .filter(index => index !== null);
@@ -191,9 +252,8 @@ const QuizAttempt = () => {
             correctAnswers++;
           }
         } else {
-          // For single-answer questions
           if (userAnswer === null || userAnswer === undefined) {
-            return; // Skip if not answered
+            return;
           }
           
           if (question.options[userAnswer].isCorrect) {
@@ -206,6 +266,9 @@ const QuizAttempt = () => {
       const scorePercentage = Math.round((correctAnswers / totalQuestions) * 100);
       const isPassed = scorePercentage >= quizData.passingScore;
       
+      // Calculate time taken in seconds
+      const timeTaken = quizData.timeLimit * 60 - timeRemaining;
+      
       // Prepare result object
       const result = {
         quizId: quizData.id,
@@ -215,12 +278,14 @@ const QuizAttempt = () => {
         scorePercentage,
         isPassed,
         completedAt: new Date().toISOString(),
-        answers: selectedAnswers
+        answers: selectedAnswers,
+        timeTaken: timeTaken
       };
       
-      // In a real app, we would save the result to the server here
-      // For now, just simulate a server request
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Save attempt to localStorage
+      const newAttempts = [...previousAttempts, result];
+      localStorage.setItem(`quiz_attempts_${quizData.id}`, JSON.stringify(newAttempts));
+      setPreviousAttempts(newAttempts);
       
       // Update state with results
       setQuizResult(result);
@@ -241,17 +306,182 @@ const QuizAttempt = () => {
     }
   };
   
-  // Handle back to course
-  const handleBackToCourse = () => {
-    if (!quizCompleted && getAnsweredQuestionsCount() > 0) {
-      setShowConfirmModal(true);
-    } else {
-      navigate(-1);
+  const handleStartQuiz = () => {
+    if (attemptsRemaining <= 0) {
+      toast.error("You have no attempts remaining for this quiz");
+      return;
+    }
+    setShowConfirmModal(true);
+  };
+
+  const confirmStartQuiz = () => {
+    setShowConfirmModal(false);
+    setShowDashboard(false);
+    setAttemptsRemaining(prev => prev - 1);
+    // Initialize timer when quiz starts
+    if (quizData.timeLimit && quizData.timeLimit > 0) {
+      setTimeRemaining(quizData.timeLimit * 60);
     }
   };
   
   // Current question
   const currentQuestion = quizData?.questions[currentQuestionIndex];
+  
+  // If showing dashboard
+  if (showDashboard) {
+    return (
+      <Container className="py-5">
+        <Row className="justify-content-center">
+          <Col md={10} lg={8}>
+            <Card className="border-0 shadow-sm">
+              <Card.Header className="bg-white border-bottom py-4">
+                <div className="d-flex justify-content-between align-items-center">
+                  <h4 className="mb-0">Quiz Dashboard</h4>
+                  <Button 
+                    variant="outline-primary" 
+                    onClick={() => navigate(-1)}
+                    className="d-flex align-items-center"
+                  >
+                    <FaArrowLeft className="me-2" /> Back to Course
+                  </Button>
+                </div>
+              </Card.Header>
+              <Card.Body className="p-4">
+                <div className="text-center mb-4">
+                  <h2 className="mb-3">{quizData.title}</h2>
+                  <p className="text-muted">{quizData.description}</p>
+                </div>
+
+                <Row className="mb-4">
+                  <Col md={4}>
+                    <Card className="text-center h-100">
+                      <Card.Body>
+                        <h3 className="mb-2">{attemptsRemaining}</h3>
+                        <p className="text-muted mb-0">Attempts Remaining</p>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                  <Col md={4}>
+                    <Card className="text-center h-100">
+                      <Card.Body>
+                        <h3 className="mb-2">{quizData.questions.length}</h3>
+                        <p className="text-muted mb-0">Total Questions</p>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                  <Col md={4}>
+                    <Card className="text-center h-100">
+                      <Card.Body>
+                        <h3 className="mb-2">{quizData.passingScore}%</h3>
+                        <p className="text-muted mb-0">Passing Score</p>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                </Row>
+
+                {previousAttempts.length > 0 && (
+                  <div className="mb-4">
+                    <h5 className="mb-3">Previous Attempts</h5>
+                    <div className="table-responsive">
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>Date & Time</th>
+                            <th>Score</th>
+                            <th>Status</th>
+                            <th>Time Taken</th>
+                            <th>Correct Answers</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {previousAttempts.map((attempt, index) => (
+                            <tr key={index}>
+                              <td>
+                                {new Date(attempt.completedAt).toLocaleString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </td>
+                              <td>
+                                <span className="fw-bold">{attempt.scorePercentage}%</span>
+                              </td>
+                              <td>
+                                <Badge bg={attempt.isPassed ? "success" : "danger"} className="px-3 py-2">
+                                  {attempt.isPassed ? "Passed" : "Failed"}
+                                </Badge>
+                              </td>
+                              <td>
+                                {Math.floor(attempt.timeTaken / 60)}m {attempt.timeTaken % 60}s
+                              </td>
+                              <td>
+                                {attempt.correctAnswers} / {attempt.totalQuestions}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-center">
+                  <Button 
+                    variant="primary" 
+                    size="lg" 
+                    onClick={handleStartQuiz}
+                    disabled={attemptsRemaining <= 0}
+                    className="px-5"
+                  >
+                    {attemptsRemaining > 0 ? "Start Quiz" : "No Attempts Remaining"}
+                  </Button>
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Start Quiz Confirmation Modal */}
+        <Modal
+          show={showConfirmModal}
+          onHide={() => setShowConfirmModal(false)}
+          centered
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>Start Quiz</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <p>Are you sure you want to start this quiz?</p>
+            <div className="alert alert-warning">
+              <div className="d-flex">
+                <FaInfoCircle className="me-2 mt-1 flex-shrink-0" />
+                <div>
+                  <strong>Please note:</strong>
+                  <ul className="mb-0 ps-3 mt-1">
+                    <li>This will use one of your attempts.</li>
+                    <li>You have {attemptsRemaining} attempts remaining.</li>
+                    <li>The quiz has a time limit of {quizData.timeLimit} minutes.</li>
+                    <li>You need to score at least {quizData.passingScore}% to pass.</li>
+                    <li>Some questions may have multiple correct answers.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={confirmStartQuiz}>
+              Start Quiz
+            </Button>
+          </Modal.Footer>
+        </Modal>
+      </Container>
+    );
+  }
   
   // If quiz is completed, show results
   if (quizCompleted && quizResult) {
@@ -387,7 +617,7 @@ const QuizAttempt = () => {
             <Button 
               variant="light" 
               className="d-flex align-items-center"
-              onClick={handleBackToCourse}
+              onClick={() => navigate(-1)}
               disabled={isSubmitting}
               style={{ 
                 color: '#0062E6',
@@ -395,6 +625,7 @@ const QuizAttempt = () => {
                 borderRadius: '50px',
                 padding: '8px 16px',
                 border: 'none',
+                marginTop: '10px',
                 boxShadow: '0 2px 5px rgba(0, 0, 0, 0.1)'
               }}
             >
@@ -402,7 +633,7 @@ const QuizAttempt = () => {
             </Button>
             
             {quizData?.timeLimit > 0 && (
-              <div className="d-flex align-items-center px-3 py-1 rounded-pill bg-white bg-opacity-25">
+              <div className="d-flex align-items-center px-3 py-1 rounded-pill bg-white bg-opacity-25 mt-3">
                 <FaClock className="me-2" />
                 <span className="fw-bold">{formatTimeRemaining()}</span>
               </div>
@@ -438,9 +669,17 @@ const QuizAttempt = () => {
                 <div className="question-container">
                   <div className="question-number mb-3">
                     <Badge bg="primary" className="px-3 py-2">Question {currentQuestionIndex + 1} of {quizData?.questions.length}</Badge>
+                    {currentQuestion?.allowMultipleAnswers && (
+                      <Badge bg="warning" className="ms-2 px-3 py-2">
+                        Multiple Answers
+                        <small className="ms-1">(Select all that apply)</small>
+                      </Badge>
+                    )}
                   </div>
                   
                   <h4 className="mb-4">{currentQuestion?.text}</h4>
+                  
+                
                   
                   <Form>
                     {currentQuestion?.options.map((option, optionIndex) => {
