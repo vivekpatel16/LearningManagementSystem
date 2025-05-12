@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateUser } = require('../middleware/authUserMiddleware');
-const upload = require('../middleware/uploadMiddleware');
+const { uploadDocument } = require('../config/cloudinaryConfig');
 const { 
   createDocument, 
   getDocument, 
@@ -12,13 +12,13 @@ const {
 } = require('../controllers/documentController');
 
 // Document routes
-router.post('/', authenticateUser, upload.single('pdf'), createDocument);
+router.post('/', authenticateUser, uploadDocument.single('pdf'), createDocument);
 router.get('/:id', getDocument);
-router.put('/:id', authenticateUser, upload.single('pdf'), updateDocument);
+router.put('/:id', authenticateUser, uploadDocument.single('pdf'), updateDocument);
 router.delete('/:id', authenticateUser, deleteDocument);
 
 // Document progress tracking routes
 router.post('/:id/progress', authenticateUser, trackDocumentProgress);
 router.get('/:id/progress', authenticateUser, getDocumentProgress);
 
-module.exports = router; 
+module.exports = router;
