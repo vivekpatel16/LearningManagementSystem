@@ -28,7 +28,7 @@ import Header from "./Components/Header";
 import Profile from "./Components/Profile";
 import { useSelector, useDispatch } from "react-redux";
 import { logout, verifyAuth } from "./features/auth/authSlice";
-import './app.css'; // or './index.css'
+
 
 // Create a more secure PrivateRoute component that includes authentication verification
 const PrivateRoute = ({ element, roles }) => {
