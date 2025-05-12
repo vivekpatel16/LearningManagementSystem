@@ -37,10 +37,38 @@ axiosInstance.interceptors.response.use(
   (error) => {
     if (error.response) {
       console.error(`Error response from ${error.config.url}:`, error.response.status, error.response.data);
+      
+      // Add special handling for assessment API errors
+      if (error.config.url.includes('/assessment')) {
+        // Handle 403 errors
+        if (error.response.status === 403) {
+          const errorMsg = error.response.data?.message || '';
+          
+          if (errorMsg.includes('not currently available')) {
+            error.assessmentUnavailable = true;
+            error.userFriendlyMessage = 'This quiz is not currently available. Please contact your instructor.';
+          }
+          else if (errorMsg.includes('maximum number of attempts')) {
+            error.maxAttemptsReached = true;
+            error.userFriendlyMessage = 'You have reached the maximum number of attempts for this quiz.';
+          }
+          else if (errorMsg.includes('Not authorized')) {
+            error.notAuthorized = true;
+            error.userFriendlyMessage = 'You do not have permission to access this quiz.';
+          }
+        }
+        // Handle 404 errors
+        else if (error.response.status === 404) {
+          error.notFound = true;
+          error.userFriendlyMessage = 'Quiz not found. It may have been deleted or moved.';
+        }
+      }
     } else if (error.request) {
       console.error(`No response received for request to ${error.config.url}`);
+      error.userFriendlyMessage = 'No response from server. Please check your internet connection.';
     } else {
       console.error(`Error setting up request to ${error.config?.url}:`, error.message);
+      error.userFriendlyMessage = 'An error occurred while preparing your request.';
     }
     return Promise.reject(error);
   }

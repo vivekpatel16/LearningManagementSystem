@@ -129,17 +129,13 @@ const CourseShow = () => {
                                 const chaptersResponse = await Courses_API.get(`/chapter/${courseId}`);
                                 
                                 if (chaptersResponse.data && Array.isArray(chaptersResponse.data)) {
-                                    // For each chapter, fetch its videos
-                                    const chaptersWithVideos = await Promise.all(
+                                    // For each chapter, fetch its videos, documents, and assessments
+                                    const chaptersWithContent = await Promise.all(
                                         chaptersResponse.data.map(async (chapter) => {
                                             try {
+                                                // Fetch videos
                                                 const videosResponse = await Courses_API.get(`/video/${chapter._id}`);
-                                                return {
-                                                    id: chapter._id,
-                                                    title: chapter.chapter_title,
-                                                    description: chapter.chapter_description,
-                                                    order: chapter.order,
-                                                    items: videosResponse.data ? videosResponse.data.map(video => ({
+                                                const videos = videosResponse.data ? videosResponse.data.map(video => ({
                                                         id: video._id,
                                                         title: video.video_title,
                                                         type: "video",
@@ -147,12 +143,78 @@ const CourseShow = () => {
                                                         url: video.video_url,
                                                         thumbnail: video.video_thumbnail,
                                                         duration: video.video_length ? Math.floor(video.video_length / 60) : "Unknown"
-                                                    })) : [],
+                                                })) : [];
+                                                
+                                                // Fetch documents for the chapter
+                                                let documents = [];
+                                                try {
+                                                    const documentsResponse = await axiosInstance.get(`/chapter-content/chapter/${chapter._id}`);
+                                                    if (documentsResponse.data && documentsResponse.data.success) {
+                                                        // Filter for document type content
+                                                        const documentItems = documentsResponse.data.contents.filter(
+                                                            item => item.content_type_ref === 'Document'
+                                                        );
+                                                        
+                                                        documents = documentItems.map(doc => ({
+                                                            id: doc._id, // This is the chapter content ID
+                                                            contentId: doc.content_id, // This is the document's actual ID
+                                                            title: doc.contentDetails?.pdf_title || "Document",
+                                                            type: "document",
+                                                            description: doc.contentDetails?.pdf_description || "",
+                                                            url: doc.contentDetails?.pdf_url || "",
+                                                            order: doc.order
+                                                        }));
+                                                        
+                                                        console.log(`Fetched ${documents.length} documents for chapter ${chapter._id}`);
+                                                    }
+                                                } catch (docError) {
+                                                    console.error(`Error fetching documents for chapter ${chapter._id}:`, docError);
+                                                }
+                                                
+                                                // Fetch assessments for the chapter
+                                                let assessments = [];
+                                                try {
+                                                    const assessmentsResponse = await axiosInstance.get(`/chapter-content/chapter/${chapter._id}`);
+                                                    if (assessmentsResponse.data && assessmentsResponse.data.success) {
+                                                        // Filter for assessment type content
+                                                        const assessmentItems = assessmentsResponse.data.contents.filter(
+                                                            item => item.content_type_ref === 'Assessment'
+                                                        );
+                                                        
+                                                        assessments = assessmentItems.map(quiz => ({
+                                                            id: quiz._id, // This is the chapter content ID
+                                                            contentId: quiz.content_id, // This is the assessment's actual ID
+                                                            title: quiz.contentDetails?.title || "Quiz",
+                                                            type: "quiz",
+                                                            description: quiz.contentDetails?.description || "",
+                                                            questions: quiz.contentDetails?.questions || [],
+                                                            timeLimit: quiz.contentDetails?.time_limit || 0,
+                                                            passingScore: quiz.contentDetails?.passing_score || 70,
+                                                            attempts: quiz.contentDetails?.max_attempts || 1,
+                                                            order: quiz.order
+                                                        }));
+                                                        
+                                                        console.log(`Fetched ${assessments.length} assessments for chapter ${chapter._id}`);
+                                                    }
+                                                } catch (quizError) {
+                                                    console.error(`Error fetching assessments for chapter ${chapter._id}:`, quizError);
+                                                }
+                                                
+                                                // Combine all content items and sort by order
+                                                const allItems = [...videos, ...documents, ...assessments].sort((a, b) => a.order - b.order);
+                                                
+                                                return {
+                                                    id: chapter._id,
+                                                    title: chapter.chapter_title,
+                                                    description: chapter.chapter_description,
+                                                    order: chapter.order,
+                                                    items: allItems,
                                                     videos: videosResponse.data || [],
-                                                    texts: chapter.texts || []
+                                                    documents: documents || [],
+                                                    assessments: assessments || []
                                                 };
                                             } catch (err) {
-                                                console.error(`Error fetching videos for chapter ${chapter._id}:`, err);
+                                                console.error(`Error fetching content for chapter ${chapter._id}:`, err);
                                                 return {
                                                     id: chapter._id,
                                                     title: chapter.chapter_title,
@@ -160,16 +222,17 @@ const CourseShow = () => {
                                                     order: chapter.order,
                                                     items: [],
                                                     videos: [],
-                                                    texts: []
+                                                    documents: [],
+                                                    assessments: []
                                                 };
                                             }
                                         })
                                     );
-                                    console.log("Fetched chapters with videos:", chaptersWithVideos);
-                                    setChapters(chaptersWithVideos);
+                                    console.log("Fetched chapters with content:", chaptersWithContent);
+                                    setChapters(chaptersWithContent);
                                     
                                     // Save to localStorage for next time
-                                    localStorage.setItem(contentStorageKey, JSON.stringify(chaptersWithVideos));
+                                    localStorage.setItem(contentStorageKey, JSON.stringify(chaptersWithContent));
                                 }
                             } catch (chapterError) {
                                 console.error("Error fetching chapters:", chapterError);
@@ -283,6 +346,12 @@ const CourseShow = () => {
     const getCategoryName = (categoryId) => {
         const category = categories.find(cat => cat._id === categoryId);
         return category ? category.category_name : "Unknown";
+    };
+
+    // Convert seconds to minutes for time limit display
+    const convertToMinutes = (secondsValue) => {
+        if (!secondsValue) return 0;
+        return Math.round(parseInt(secondsValue, 10) / 60);
     };
 
     // Enroll Now Handler
@@ -513,64 +582,149 @@ const CourseShow = () => {
     };
 
     const handleQuizClick = (quiz) => {
-        navigate('/quiz-attempt', { 
+        // Navigate to quiz dashboard page with quiz ID
+        navigate(`/quiz-dashboard/${quiz.id}`, { 
             state: { 
                 quizData: quiz, 
-                courseData: course, 
-                chapterData: chapters.find(chapter => 
+                courseId: courseId, 
+                chapterId: chapters.find(chapter => 
                     chapter.quizzes && chapter.quizzes.some(q => q.id === quiz.id)
-                ) 
+                )?._id,
+                courseTitle: course.course_title 
             } 
         });
     };
 
     // Handle item click (video, document, quiz)
     const handleItemClick = (item, chapterId) => {
+        if (!isEnrolled) {
+            setShowEnrollModal(true);
+            return;
+        }
+        
         if (item.type === "video") {
-            navigate(`/learner/video/${item.id}`, {
+            navigate(`/video-player`, {
                 state: {
-                    videoUrl: item.url,
-                    title: item.title,
-                    description: item.description,
+                    videoData: item,
                     courseId: courseId,
                     chapterId: chapterId,
-                    itemId: item.id
+                    courseTitle: course.course_title
                 }
             });
         } else if (item.type === "document") {
-            navigate(`/learner/document/${item.id}`, {
+            // Enhanced logging to help troubleshoot document viewing
+            console.log("Document clicked:", item);
+            
+            // Ensure the document has all required data
+            const enhancedDocData = {
+                ...item,
+                // If pdf_url or url not already present, try to use any available URL field
+                pdf_url: item.pdf_url || item.url || (item.contentDetails ? item.contentDetails.pdf_url : null),
+                // Make sure we have a title
+                pdf_title: item.title || item.pdf_title || (item.contentDetails ? item.contentDetails.pdf_title : "Document")
+            };
+            
+            console.log("Enhanced document data:", enhancedDocData);
+            
+            // Navigate to document viewer with content ID
+            navigate(`/document-viewer/${item.id}`, {
                 state: {
-                    documentUrl: item.url,
-                    title: item.title,
-                    content: item.content,
+                    documentData: enhancedDocData,
                     courseId: courseId,
                     chapterId: chapterId,
-                    itemId: item.id
+                    courseTitle: course.course_title
                 }
             });
         } else if (item.type === "quiz") {
             // Check if quiz has already been attempted maximum times
             const quizAttempts = learnerData.quizAttempts || [];
-            const attemptsMade = quizAttempts.filter(a => a.quizId === item.id).length;
+            const attemptsMade = quizAttempts.filter(a => a.quizId === item.contentId).length;
+            const maxAttempts = item.attempts || 1;
             
-            if (attemptsMade >= item.attempts) {
-                alert(`You have already used all ${item.attempts} attempts for this quiz.`);
+            if (attemptsMade >= maxAttempts) {
+                // Get the best attempt to show result
+                let bestAttempt = null;
+                if (quizAttempts.length > 0) {
+                    // Find the attempt with highest score
+                    bestAttempt = quizAttempts
+                        .filter(a => a.quizId === item.contentId)
+                        .reduce((best, current) => 
+                            (current.score > best.score) ? current : best, 
+                            quizAttempts[0]);
+                }
+                
+                // Show toast with previous results and option to view details
+                toast((t) => (
+                    <div>
+                        <div className="mb-2">
+                            You've used all {maxAttempts} attempts for this quiz.
+                            {bestAttempt && (
+                                <span> Your best score was {bestAttempt.score}%.</span>
+                            )}
+                        </div>
+                        <div className="d-flex justify-content-end">
+                            <Button 
+                                variant="link" 
+                                size="sm" 
+                                className="text-white p-0 me-3"
+                                onClick={() => {
+                                    toast.dismiss(t.id);
+                                    // Navigate to quiz results view instead of attempt
+                                    navigate(`/quiz-dashboard/${item.id}`, {
+                                        state: {
+                                            quizData: {
+                                                ...item,
+                                                contentId: item.contentId,
+                                                viewingPreviousAttempt: true,
+                                                previousAttempt: bestAttempt
+                                            },
+                                            courseId: courseId,
+                                            chapterId: chapterId,
+                                            courseTitle: course.course_title
+                                        }
+                                    });
+                                }}
+                            >
+                                View Results
+                            </Button>
+                            <Button 
+                                variant="link" 
+                                size="sm" 
+                                className="text-white p-0"
+                                onClick={() => toast.dismiss(t.id)}
+                            >
+                                Dismiss
+                            </Button>
+                        </div>
+                    </div>
+                ), {
+                    duration: 5000,
+                    style: {
+                        background: '#f8d7da',
+                        color: '#721c24',
+                        padding: '16px',
+                        borderRadius: '4px'
+                    }
+                });
                 return;
             }
             
-            // Navigate to quiz attempt page
-            navigate(`/learner/quiz/${item.id}`, {
+            // Enhanced logging to help troubleshoot quiz navigation
+            console.log("Quiz clicked:", item);
+            
+            // Make sure we have the content ID to fetch the assessment
+            const quizContentId = item.contentId || item.id;
+            
+            // Navigate to quiz dashboard page with content ID
+            navigate(`/quiz-dashboard/${item.id}`, {
                 state: {
-                    quizId: item.id,
-                    title: item.title,
-                    description: item.description,
-                    questions: item.questions,
-                    timeLimit: item.timeLimit,
-                    passingScore: item.passingScore,
-                    attempts: item.attempts,
-                    attemptsMade: attemptsMade,
+                    quizData: {
+                        ...item,
+                        contentId: quizContentId
+                    },
                     courseId: courseId,
-                    chapterId: chapterId
+                    chapterId: chapterId,
+                    courseTitle: course.course_title
                 }
             });
         }
@@ -1168,7 +1322,7 @@ const CourseShow = () => {
                                                     </div>
                                                     <div className="text-muted mb-3 small">
                                                         <div><strong>Questions:</strong> {quiz.questions.length}</div>
-                                                        <div><strong>Time Limit:</strong> {quiz.timeLimit > 0 ? `${quiz.timeLimit} minutes` : 'No time limit'}</div>
+                                                        <div><strong>Time Limit:</strong> {quiz.timeLimit > 0 ? `${convertToMinutes(quiz.timeLimit)} min` : 'No time limit'}</div>
                                                         <div><strong>Passing Score:</strong> {quiz.passingScore}%</div>
                                                     </div>
                                                     <Button 

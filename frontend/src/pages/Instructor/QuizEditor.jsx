@@ -78,6 +78,7 @@ const QuizEditor = () => {
           // If no quizId, just use the initial values passed from the navigation
           setQuizTitle(initialTitle || "");
           setQuizDescription(initialDesc || "");
+          setPassingScore(70); // Set default passing score to 70 for new quizzes
         }
       } catch (error) {
         console.error("Error fetching quiz data:", error);
@@ -276,135 +277,87 @@ const QuizEditor = () => {
     };
   };
 
-  const handleSaveQuiz = async () => {
-    if (questions.length === 0) {
-      toast.error("Please add at least one question to the quiz");
+  // Update passing score handler
+  const handlePassingScoreChange = (e) => {
+    const value = e.target.value;
+    // Allow empty value for clearing
+    if (value === '') {
+      setPassingScore(70); // Set to 70 when cleared
       return;
     }
-    
+    // Convert to number and validate
+    const numScore = parseInt(value);
+    if (!isNaN(numScore)) {
+      if (numScore >= 0 && numScore <= 100) {
+        setPassingScore(numScore);
+      } else {
+        // If out of range, set to closest valid value
+        setPassingScore(numScore < 0 ? 0 : 100);
+      }
+    }
+  };
+
+  // Format passing score for display
+  const formatPassingScore = (score) => {
+    if (score === '') return '70'; // Show 70 when empty
+    return score === 0 ? '0' : score;
+  };
+
+  // Update the handleSaveQuiz function to include passing score
+  const handleSaveQuiz = async () => {
     try {
       setLoading(true);
-      
-      // Debug: check if token exists
-      const token = localStorage.getItem("token");
-      if (!token) {
-        toast.error("Authentication token missing. Please log in again.");
+      setFormError(null);
+
+      // Validate quiz data
+      if (!quizTitle.trim()) {
+        toast.error("Quiz title is required");
+        setFormError("Quiz title is required");
+        setLoading(false);
         return;
       }
-      
-      // Format questions for the API using the correct structure
-      const formattedQuestions = questions.map((q, index) => {
-        // Check each question has text
-        if (!q.text || q.text.trim() === '') {
-          throw new Error(`Question ${index + 1} is missing text`);
-        }
 
-        // Check each question has at least 2 options
-        if (!q.options || !Array.isArray(q.options) || q.options.length < 2) {
-          throw new Error(`Question ${index + 1} must have at least 2 options`);
-        }
-
-        // Ensure each option has text and isCorrect is a boolean
-        const formattedOptions = [];
-        let hasCorrectOption = false;
-        
-        // Process each option
-        q.options.forEach((option, optionIndex) => {
-          // Skip empty options
-          if (!option.text || option.text.trim() === '') {
-            return;
-          }
-          
-          // Ensure isCorrect is boolean
-          const isCorrect = Boolean(option.isCorrect);
-          
-          // Track if we've found a correct option
-          if (isCorrect) {
-            hasCorrectOption = true;
-          }
-          
-          formattedOptions.push({
-            text: option.text.trim(),
-            isCorrect: isCorrect
-          });
-        });
-        
-        // Ensure we have at least 2 options
-        if (formattedOptions.length < 2) {
-          throw new Error(`Question ${index + 1} must have at least 2 options with text`);
-        }
-        
-        // If no option is marked as correct, mark the first one
-        if (!hasCorrectOption) {
-          formattedOptions[0].isCorrect = true;
-        }
-        
-        return {
-          text: q.text.trim(),
-          options: formattedOptions
-        };
-      });
-      
-      // Prepare quiz data for the API
-      const quizData = { 
-        title: quizTitle, 
-        description: quizDescription, 
-        questions: formattedQuestions, 
-        passing_score: passingScore === '' ? 0 : passingScore, 
-        time_limit: (timeLimit === '' ? 0 : timeLimit) * 60, 
-        max_attempts: attempts, 
-        isPublished: isPublished 
-      };
-      
-      let savedQuiz;
-      
-      // If quizId exists, update the quiz, otherwise create a new one
-      if (quizId) {
-        savedQuiz = await patchQuiz(quizId, quizData);
-        toast.success("Quiz updated successfully!");
-      } else {
-        try {
-          savedQuiz = await createQuiz(quizData);
-          
-          if (!savedQuiz || !savedQuiz._id) {
-            throw new Error("Invalid response from server - missing quiz ID");
-          }
-          
-          // Now we need to add this quiz to the chapter content
-          await axiosInstance.post(`/chapter-content/${chapterId}`, {
-            content_id: savedQuiz._id,
-            content_type_ref: "Assessment"
-          });
-          
-          toast.success("Quiz created successfully!");
-        } catch (createError) {
-          throw createError;
-        }
+      if (questions.length === 0) {
+        toast.error("At least one question is required");
+        setFormError("At least one question is required");
+        setLoading(false);
+        return;
       }
+
+      // Prepare quiz data with passing score
+      const quizData = {
+        title: quizTitle.trim(),
+        description: quizDescription.trim(),
+        questions: questions.map(q => ({
+          question_text: q.text,
+          options: q.options,
+          points: q.points || 1
+        })),
+        passing_score: passingScore === '' ? 70 : passingScore, // Default to 70 if empty
+        time_limit: timeLimit * 60, // Convert to seconds
+        max_attempts: attempts,
+        isPublished: isPublished,
+        chapterId: chapterId,
+        courseId: courseId
+      };
+
+      let response;
+      if (quizId) {
+        response = await updateQuiz(quizId, quizData);
+        toast.success("Quiz updated successfully");
+      } else {
+        response = await createQuiz(quizData);
+        setQuizId(response._id);
+        toast.success("Quiz created successfully");
+      }
+
+      // Instead of navigating, just show success message
+      // The user can use the "Back to Course" button when they want to return
       
-      // Navigate back to course details page
-      navigate(-1, { state: { fromQuizEditor: true } });
     } catch (error) {
       console.error("Error saving quiz:", error);
-      
-      // Show a more detailed error message
-      let errorMessage = "Failed to save quiz. Please try again.";
-      if (error.response) {
-        // Server responded with an error
-        if (error.response.data && error.response.data.message) {
-          errorMessage = error.response.data.message;
-        } else {
-          errorMessage = `Server error (${error.response.status}): ${error.response.statusText}`;
-        }
-      } else if (error.request) {
-        // Request was made but no response received
-        errorMessage = "No response from server. Please check your connection.";
-      } else {
-        // Error in setting up the request
-        errorMessage = error.message;
-      }
-      
-      toast.error(errorMessage);
+      toast.error(error.response?.data?.message || "Failed to save quiz");
+      setFormError("Failed to save quiz. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -571,12 +524,16 @@ const QuizEditor = () => {
                         type="number"
                         min="0"
                         max="100"
-                        value={passingScore}
-                        onChange={(e) => setPassingScore(e.target.value === '' ? '' : Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                        value={formatPassingScore(passingScore)}
+                        onChange={handlePassingScoreChange}
                         style={{ borderRadius: '8px 0 0 8px' }}
+                        placeholder="Enter passing score (0-100)"
                       />
                       <InputGroup.Text style={{ background: '#f8f9fa' }}>%</InputGroup.Text>
                     </InputGroup>
+                    <Form.Text className="text-muted">
+                      Enter a value between 0 and 100 (default is 70%)
+                    </Form.Text>
                   </Form.Group>
                   
                   <Form.Group className="mb-3">

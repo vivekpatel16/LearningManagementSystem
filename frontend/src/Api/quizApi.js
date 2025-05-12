@@ -5,7 +5,7 @@ import axios from "axios";
 
 // Use the base URL from axiosInstance to stay consistent
 const Quiz_API = axios.create({ 
-  baseURL: "https://learningmanagementsystem-2-bj3z.onrender.com/api/assessment",
+  baseURL: `${axiosInstance.defaults.baseURL}/assessment`,
   timeout: 30000, // Increase timeout to 30 seconds
 });
 
@@ -66,7 +66,12 @@ Quiz_API.interceptors.response.use(
  */
 const createMinimalQuiz = async (quizData) => {
   try {
-    const response = await Quiz_API.post('/create-minimal', quizData);
+    // Add default passing score if not provided
+    const quizDataWithDefaults = {
+      ...quizData,
+      passing_score: quizData.passing_score || 70
+    };
+    const response = await Quiz_API.post('/create-minimal', quizDataWithDefaults);
     return response.data;
   } catch (error) {
     console.error('Error creating minimal quiz:', error);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Form, Button, Container, Card, Row, Col, Spinner } from "react-bootstrap";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FaUpload, FaBook, FaInfoCircle } from "react-icons/fa";
+import { FaUpload, FaBook, FaInfoCircle, FaArrowLeft } from "react-icons/fa";
 import Courses_API from "../../Api/courseApi";
 
 const CourseManagement = ({ onUpdateCourses }) => {
@@ -248,19 +248,28 @@ const CourseManagement = ({ onUpdateCourses }) => {
         color: 'white',
         borderBottomLeftRadius: '30px',
         borderBottomRightRadius: '30px',
-        marginBottom: '25px',
-        boxShadow: '0 4px 15px rgba(0, 0, 0, 0.08)'
       }}>
         <Container>
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
             <div>
-              <h1 className="fw-bold mb-0">{existingCourse ? "Edit Course" : "Add Course"}</h1>
-              <p className="mb-0 opacity-75">
-                {existingCourse 
-                  ? "Update your course details and content" 
-                  : "Create a new course for your learners"}
-              </p>
+              <h2 className="fw-bold mb-0">{existingCourse ? "Edit Course" : "Create New Course"}</h2>
+              <p className="text-white-50 mb-0">{existingCourse ? "Update your course details" : "Fill in the details to create your course"}</p>
             </div>
+            <Button 
+              variant="light" 
+              className="d-flex align-items-center mt-3 mt-md-0"
+              onClick={() => navigate(-1)}
+              style={{ 
+                color: '#0062E6', 
+                fontWeight: '500', 
+                borderRadius: '50px', 
+                padding: '8px 16px', 
+                border: 'none',
+                boxShadow: '0 2px 5px rgba(0, 0, 0, 0.1)'
+              }}
+            >
+              <FaArrowLeft className="me-2" /> Back
+            </Button>
           </div>
         </Container>
       </div>

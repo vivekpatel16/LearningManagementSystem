@@ -19,6 +19,8 @@ import Wishlist from "./pages/Learner/Wishlist";
 import Courses from "./pages/Learner/Courses";
 import CourseShow from "./pages/Learner/CourseShow";
 import QuizAttempt from "./pages/Learner/QuizAttempt";
+import QuizDashboard from "./pages/Learner/QuizDashboard";
+import DocumentViewer from "./pages/Learner/DocumentViewer";
 import Category from "./pages/Admin/Category";
 import TidioChat from "./Components/TidioChat";
 import VideoPlayer from "./Components/VideoPlayer";
@@ -26,7 +28,7 @@ import Header from "./Components/Header";
 import Profile from "./Components/Profile";
 import { useSelector, useDispatch } from "react-redux";
 import { logout, verifyAuth } from "./features/auth/authSlice";
-// import './app.css'; // or './index.css'
+import './app.css'; // or './index.css'
 
 // Create a more secure PrivateRoute component that includes authentication verification
 const PrivateRoute = ({ element, roles }) => {
@@ -229,8 +231,12 @@ function App() {
             <Route path="/wishlist" element={<PrivateRoute element={<Wishlist />} roles={["user"]} />} />
             <Route path="/courses" element={<PrivateRoute element={<Courses />} roles={["user"]} />} />
             <Route path="/courses/courseshow/:courseId" element={<PrivateRoute element={<CourseShow />} roles={["user"]} />} />
-            <Route path="/quiz-attempt" element={<PrivateRoute element={<QuizAttempt />} roles={["user"]} />} />
+            <Route path="/quiz-attempt/:id" element={<PrivateRoute element={<QuizAttempt />} roles={["user"]} />} />
+            <Route path="/quiz-dashboard/:id" element={<PrivateRoute element={<QuizDashboard />} roles={["user"]} />} />
             <Route path="/video-player" element={<PrivateRoute element={<VideoPlayer />} roles={["user"]} />} />
+            <Route path="/document-viewer/:id" element={<PrivateRoute element={<DocumentViewer />} roles={["user"]} />} />
+            {/* Fallback for document paths */}
+            <Route path="/document-viewer/uploads/*" element={<Navigate to="/courses" replace />} />
 
             {/* Shared Profile Route */}
             <Route path="/profile" element={<PrivateRoute element={<Profile />} roles={["admin", "instructor", "user"]} />} />
@@ -251,3 +257,4 @@ function App() {
 }
 
 export default App;
+
