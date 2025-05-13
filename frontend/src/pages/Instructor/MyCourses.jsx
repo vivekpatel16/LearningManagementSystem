@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaEdit, FaTrash, FaPlus, FaSearch, FaArrowLeft } from "react-icons/fa";
+import { FaEdit, FaTrash, FaPlus, FaSearch } from "react-icons/fa";
 import common_API from "../../Api/commonApi";
 import Courses_API from "../../Api/courseApi";
 import defaultImage from "../../assets/default-course.png";
@@ -170,22 +170,6 @@ const CourseList = () => {
                   }}
                 >
                   <FaPlus className="me-2" /> Create New Course
-                </Button>
-                
-                <Button 
-                  variant="light" 
-                  className="d-flex align-items-center"
-                  onClick={() => navigate("/instructor/dashboard")}
-                  style={{ 
-                    color: '#0062E6', 
-                    fontWeight: '500', 
-                    borderRadius: '50px', 
-                    padding: '8px 16px', 
-                    border: 'none',
-                    boxShadow: '0 2px 5px rgba(0, 0, 0, 0.1)'
-                  }}
-                >
-                  <FaArrowLeft className="me-2" /> Back to Dashboard
                 </Button>
               </div>
             </Col>

@@ -178,7 +178,7 @@ const CourseDetail = () => {
                     type: "quiz",
                     description: details.description,
                     isPublished: details.is_published,
-                    passingScore: details.passing_score || 70, // Default to 70 if not provided
+                    passingScore: details.passing_score,
                     timeLimit: details.time_limit,
                     attempts: details.attempts,
                     order: item.order,
@@ -250,7 +250,7 @@ const CourseDetail = () => {
                     type: "quiz",
                     description: quiz.description,
                     isPublished: quiz.is_published,
-                    passingScore: quiz.passing_score || 70, // Default to 70 if not provided
+                    passingScore: quiz.passing_score,
                     timeLimit: quiz.time_limit,
                     attempts: quiz.attempts,
                     order: item.order,
@@ -625,14 +625,8 @@ const CourseDetail = () => {
     setSelectedChapter(chapter);
     setQuizTitle("");
     setQuizDescription("");
-    const quizData = {
-      title: "",
-      description: "",
-      passing_score: 70, // Set default passing score
-      chapterId: chapter._id,
-      courseId: course._id
-    };
-    handleOpenQuizEditor(quizData);
+    setShowQuizModal(true);
+    setShowContentModal(false);
   };
 
   // Add resetQuizForm function which is called but not defined
@@ -669,8 +663,8 @@ const CourseDetail = () => {
     }
   };
 
-  const handleOpenQuizEditor = (quizData) => {
-    if (!quizData.title.trim()) {
+  const handleOpenQuizEditor = () => {
+    if (!quizTitle.trim()) {
       toast.error("Quiz title is required!");
       return;
     }
@@ -678,11 +672,10 @@ const CourseDetail = () => {
     // Just navigate to quiz editor with title and description
     navigate("/instructor/quiz-editor", { 
       state: { 
-        chapterId: quizData.chapterId,
-        courseId: quizData.courseId,
-        quizTitle: quizData.title,
-        quizDescription: quizData.description,
-        passing_score: quizData.passing_score
+        chapterId: selectedChapter.id,
+        courseId: course._id,
+        quizTitle,
+        quizDescription
       } 
     });
   };

@@ -176,7 +176,7 @@ const Login = () => {
                 
                 {/* Wave pattern background */}
                 <motion.path
-                  d="M 50 350 Q 175 300 300 350 T 550 350"
+                  d="M50,350 C100,320 150,380 200,350 C250,320 300,380 350,350 C400,320 450,380 500,350 C550,320 600,380 650,350"
                   stroke="#E6F3FF"
                   strokeWidth="120"
                   fill="none"
