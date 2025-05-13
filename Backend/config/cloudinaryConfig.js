@@ -89,30 +89,10 @@ const uploadBase64Image = async (base64Image, folder = 'lms-profile-images') => 
   }
 };
 
-// Configure document (PDF) storage
-const documentStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'lms-documents',
-    resource_type: 'raw',
-    allowed_formats: ['pdf', 'doc', 'docx']
-  }
-});
-
-// Document upload middleware
-const uploadDocument = multer({
-  storage: documentStorage,
-  limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB limit for PDFs
-  }
-});
-
-
 module.exports = { 
   cloudinary, 
   uploadVideo, 
   uploadImage, 
-   uploadDocument, 
   handleMulterError,
   uploadBase64Image
 };

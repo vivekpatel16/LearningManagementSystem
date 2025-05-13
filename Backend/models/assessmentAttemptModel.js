@@ -25,10 +25,6 @@ const assessmentAttemptSchema = new mongoose.Schema({
     type: Number,
     default: 1
   },
-  attempts_remaining: {
-    type: Number,
-    default: 0 // Will be set based on max_attempts from the Assessment model
-  },
   answers: [{
     question_index: Number,
     selected_options: [Number], // Array of selected option indices for multiple-choice questions
@@ -50,9 +46,6 @@ const assessmentAttemptSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  date_completed: {
-    type: Date
-  }
 }, { timestamps: true });
 
 module.exports = mongoose.model("AssessmentAttempt", assessmentAttemptSchema); 

@@ -12,6 +12,7 @@ const wishlistRoutes=require("./routes/wishlistRoutes");
 const documentRoutes = require("./routes/documentRoutes");
 const chapterContentRoutes = require("./routes/chapterContentRoutes");
 const assessmentRoutes = require("./routes/assessmentRoutes");
+const chatbotRoutes = require("./routes/chatbotRoutes");
 dotenv.config();
 connectDb();
 
@@ -26,7 +27,10 @@ const app = express();
 const allowedOrigins = [
     "https://learningmanagementsystem-3.onrender.com", // Frontend
     "https://learningmanagementsystem-2-bj3z.onrender.com", // Backend
-    "http://localhost:5173" // Local Testing
+    "http://localhost:5173", // Local Testing
+    "http://localhost:5000", // Local Testing
+    "https://studio.botpress.cloud",
+    "https://cdn.botpress.cloud",
 ];
 
 app.use(cors({
@@ -67,7 +71,7 @@ app.use("/api/chapter-content", chapterContentRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/assessment", assessmentRoutes);
-
+app.use("/api/chatbot",chatbotRoutes)
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
